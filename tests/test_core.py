@@ -10,9 +10,88 @@ import pytest
 from comfy_api_graphs import ComfyWorkflow, WorkflowNode
 from comfy_api_graphs import (
     validate_node_references,
+    load_object_info,
+    validate_against_object_info,
     estimate_vram_usage,
     validate_workflow_complete,
 )
+
+# Minimal /object_info slice for schema tests (no new fixture file).
+MINIMAL_OBJECT_INFO = {
+    "CheckpointLoaderSimple": {
+        "input": {
+            "required": {"ckpt_name": [["model.safetensors", "other.safetensors"]]},
+        },
+        "output": ["MODEL", "CLIP", "VAE"],
+        "output_name": ["MODEL", "CLIP", "VAE"],
+    },
+    "CLIPTextEncode": {
+        "input": {
+            "required": {
+                "text": ["STRING", {"multiline": True}],
+                "clip": ["CLIP"],
+            },
+        },
+        "output": ["CONDITIONING"],
+        "output_name": ["CONDITIONING"],
+    },
+    "EmptyLatentImage": {
+        "input": {
+            "required": {
+                "width": ["INT", {"default": 512}],
+                "height": ["INT", {"default": 512}],
+                "batch_size": ["INT", {"default": 1}],
+            },
+        },
+        "output": ["LATENT"],
+        "output_name": ["LATENT"],
+    },
+    "KSampler": {
+        "input": {
+            "required": {
+                "model": ["MODEL"],
+                "seed": ["INT", {"default": 0}],
+                "steps": ["INT", {"default": 20}],
+                "cfg": ["FLOAT", {"default": 8.0}],
+                "sampler_name": [["euler", "euler_ancestral"]],
+                "scheduler": [["normal", "karras"]],
+                "positive": ["CONDITIONING"],
+                "negative": ["CONDITIONING"],
+                "latent_image": ["LATENT"],
+                "denoise": ["FLOAT", {"default": 1.0}],
+            },
+        },
+        "output": ["LATENT"],
+        "output_name": ["LATENT"],
+    },
+    "VAEDecode": {
+        "input": {
+            "required": {
+                "samples": ["LATENT"],
+                "vae": ["VAE"],
+            },
+        },
+        "output": ["IMAGE"],
+        "output_name": ["IMAGE"],
+    },
+    "SaveImage": {
+        "input": {
+            "required": {
+                "images": ["IMAGE"],
+                "filename_prefix": ["STRING", {"default": "ComfyUI"}],
+            },
+        },
+        "output": [],
+        "output_name": [],
+    },
+    "VAELoader": {
+        "input": {
+            "required": {"vae_name": [["vae.safetensors"]]},
+        },
+        "output": ["VAE"],
+        "output_name": ["VAE"],
+    },
+}
 
 FIXTURES = Path(__file__).parent / "fixtures"
 MINIMAL_API = FIXTURES / "minimal_api_graph.json"
@@ -164,17 +243,18 @@ class TestComfyWorkflow:
         assert api_format["1"]["class_type"] == "CheckpointLoaderSimple"
         assert api_format["1"]["inputs"]["ckpt_name"] == "model.safetensors"
 
-    def test_to_graph_format(self):
-        """Test conversion to graph format."""
+    def test_to_graph_format_deprecated(self):
+        """Skeleton export still works but warns — not a UI converter."""
         wf = ComfyWorkflow()
 
         wf.add_node("CheckpointLoaderSimple", {}, node_id="1")
         wf.add_node("KSampler", {}, node_id="2")
 
-        graph_format = wf.to_graph_format()
+        with pytest.warns(DeprecationWarning, match="to_graph_format"):
+            graph_format = wf.to_graph_format()
 
         assert "nodes" in graph_format
-        assert "links" in graph_format
+        assert graph_format["links"] == []
         assert len(graph_format["nodes"]) == 2
 
     def test_workflow_length(self):
@@ -233,8 +313,8 @@ class TestValidation:
         assert len(errors) == 1
         assert "nonexistent" in errors[0]
 
-    def test_estimate_vram_usage(self):
-        """Test VRAM estimation."""
+    def test_estimate_vram_usage_is_planning_hint(self):
+        """VRAM helper is explicitly a non-predictive planning hint."""
         wf = ComfyWorkflow()
 
         wf.add_node(
@@ -245,14 +325,15 @@ class TestValidation:
 
         estimate = estimate_vram_usage(wf)
 
+        assert estimate["is_estimate"] is True
+        assert "PLANNING HINT" in estimate["disclaimer"]
         assert "estimated_vram_gb" in estimate
         assert estimate["estimated_vram_gb"] > 0
-        assert "model_loaders" in estimate
         assert estimate["model_loaders"] == 1  # Just the checkpoint
-        assert "recommendation" in estimate
+        assert "Hint only" in estimate["recommendation"]
 
-    def test_estimate_vram_flux(self):
-        """Test VRAM estimation recognizes FLUX models."""
+    def test_estimate_vram_flux_hint(self):
+        """FLUX ckpt name bumps the hint number — still not a predictor."""
         wf = ComfyWorkflow()
 
         wf.add_node(
@@ -262,8 +343,84 @@ class TestValidation:
 
         estimate = estimate_vram_usage(wf)
 
-        # FLUX should have higher VRAM estimate
+        assert estimate["is_estimate"] is True
         assert estimate["estimated_vram_gb"] > 20
+
+    def test_validate_against_object_info_ok(self):
+        """Minimal API graph passes against a matching object_info slice."""
+        wf = ComfyWorkflow.from_api_json(MINIMAL_API)
+        info = load_object_info(MINIMAL_OBJECT_INFO)
+
+        report = validate_against_object_info(wf, info)
+
+        assert report["valid"] is True
+        assert report["errors"] == []
+
+    def test_validate_against_object_info_unknown_class(self):
+        """Missing custom node class_type fails before queue."""
+        wf = ComfyWorkflow()
+        wf.add_node("TotallyFakeNode", {"x": 1}, node_id="1")
+
+        report = validate_against_object_info(wf, MINIMAL_OBJECT_INFO)
+
+        assert report["valid"] is False
+        assert any("TotallyFakeNode" in e for e in report["errors"])
+
+    def test_validate_against_object_info_missing_required(self):
+        """Missing required widget fails schema check."""
+        wf = ComfyWorkflow()
+        wf.add_node("SaveImage", {"images": ["0", 0]}, node_id="1")  # no prefix
+
+        report = validate_against_object_info(wf, MINIMAL_OBJECT_INFO)
+
+        assert report["valid"] is False
+        assert any("filename_prefix" in e for e in report["errors"])
+
+    def test_validate_against_object_info_bad_output_index(self):
+        """Output slot past declared outputs fails."""
+        wf = ComfyWorkflow()
+        ckpt = wf.add_node(
+            "CheckpointLoaderSimple",
+            {"ckpt_name": "model.safetensors"},
+            node_id="1",
+        )
+        wf.add_node(
+            "CLIPTextEncode",
+            {"text": "hi", "clip": ckpt.get_output_ref(99)},
+            node_id="2",
+        )
+
+        report = validate_against_object_info(wf, MINIMAL_OBJECT_INFO)
+
+        assert report["valid"] is False
+        assert any("out of range" in e for e in report["errors"])
+
+    def test_validate_against_object_info_unknown_input_warns(self):
+        """Extra input keys warn by default; can escalate to errors."""
+        wf = ComfyWorkflow()
+        wf.add_node(
+            "SaveImage",
+            {
+                "images": ["0", 0],
+                "filename_prefix": "x",
+                "totally_extra": 1,
+            },
+            node_id="1",
+        )
+
+        soft = validate_against_object_info(wf, MINIMAL_OBJECT_INFO)
+        assert soft["valid"] is True
+        assert any("totally_extra" in w for w in soft["warnings"])
+
+        hard = validate_against_object_info(
+            wf, MINIMAL_OBJECT_INFO, unknown_inputs_as_errors=True
+        )
+        assert hard["valid"] is False
+        assert any("totally_extra" in e for e in hard["errors"])
+
+    def test_load_object_info_rejects_bad_shape(self):
+        with pytest.raises(ValueError, match="object_info"):
+            load_object_info({"KSampler": {"not_input": True}})
 
     def test_validate_workflow_complete_valid(self):
         """Complete graph with loader + SaveImage passes."""
@@ -280,6 +437,7 @@ class TestValidation:
         assert result["valid"] is True
         assert result["errors"] == []
         assert result["node_count"] == 3
+        assert any("object_info" in w for w in result["warnings"])
 
     def test_validate_workflow_complete_broken_link(self):
         """Broken socket link marks valid=False."""

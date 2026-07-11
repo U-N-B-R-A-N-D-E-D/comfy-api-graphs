@@ -133,10 +133,11 @@ def main():
         for e in errors:
             print(f"  - {e}")
 
-    # VRAM estimate
+    # VRAM planning hint (not a predictor — see disclaimer)
     vram = estimate_vram_usage(wf)
-    print(f"VRAM estimate: {vram['estimated_vram_gb']:.1f} GB")
-    print(f"  ({vram['recommendation']})")
+    print(f"VRAM planning hint: ~{vram['estimated_vram_gb']:.1f} GB")
+    print(f"  {vram['recommendation']}")
+    print(f"  {vram['disclaimer']}")
 
     # Save
     output_file = "custom_workflow.json"

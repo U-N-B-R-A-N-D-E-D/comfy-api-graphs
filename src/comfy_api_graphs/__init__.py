@@ -1,29 +1,27 @@
 """
 Comfy API Graphs
-========================
+================
 
-Pythonic construction of ComfyUI workflows.
-Build, validate, and export AI generation workflows as ComfyUI API JSON.
+Offline thin Python helper for ComfyUI **API-format** graphs:
+load → mutate → validate → re-queue.
 
-Basic usage:
-    >>> from comfy_api_graphs import FluxTxt2ImgTemplate
-    >>> workflow = FluxTxt2ImgTemplate.create(
-    ...     prompt="a serene landscape",
-    ...     width=1024,
-    ...     height=1024,
-    ... )
-    >>> workflow.save_api_json("my_workflow.json")
+Primary path (what this package is for)::
 
-Custom workflow:
     >>> from comfy_api_graphs import ComfyWorkflow
-    >>> wf = ComfyWorkflow("custom")
-    >>> node = wf.add_node("KSampler", {...})
-    >>> api_format = wf.to_api_format()
+    >>> wf = ComfyWorkflow.from_api_json("my_graph_api.json")  # Save (API Format)
+    >>> wf.set_input_by_class_type("CLIPTextEncode", "text", "a new prompt")
+    >>> wf.randomize_seeds()
+    >>> wf.save_api_json("my_graph_api.seeded.json")
+
+Optional FLUX/SDXL templates teach common wiring — they are not the product.
 """
 
 from .core import WorkflowNode, ComfyWorkflow
 from .validation import (
     validate_node_references,
+    load_object_info,
+    fetch_object_info,
+    validate_against_object_info,
     estimate_vram_usage,
     validate_workflow_complete,
 )
@@ -39,7 +37,7 @@ from .templates import (
     OutpaintTemplate,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     # Core
@@ -47,9 +45,12 @@ __all__ = [
     "ComfyWorkflow",
     # Validation
     "validate_node_references",
+    "load_object_info",
+    "fetch_object_info",
+    "validate_against_object_info",
     "estimate_vram_usage",
     "validate_workflow_complete",
-    # FLUX
+    # FLUX (optional templates — secondary)
     "FluxTxt2ImgTemplate",
     "FluxImg2ImgTemplate",
     "FluxInpaintTemplate",

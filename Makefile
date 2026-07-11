@@ -1,6 +1,7 @@
 # Makefile for Comfy API Graphs
 #
-# Honest local workflow. No live PyPI/GitHub publish until configured.
+# Install: pip install git+https://github.com/U-N-B-R-A-N-D-E-D/comfy-api-graphs.git
+# PyPI upload stays blocked until credentials are configured on purpose.
 
 .PHONY: help install install-dev test lint format clean build publish docs
 

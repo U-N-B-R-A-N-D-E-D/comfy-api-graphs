@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-11
+
+Close honesty gaps: mutate-first story, object_info schema validation, VRAM
+disclaimer, deprecate fake UI graph export, honest install front door.
+
+### Added
+
+- `validate_against_object_info(workflow, object_info)` — catch missing /
+  renamed `class_type`, missing required inputs, out-of-range output slots.
+- `load_object_info(path_or_dict)` / `fetch_object_info(url)` (stdlib urllib;
+  still zero runtime deps). Prefer cached snapshots in CI.
+- `estimate_vram_usage` now returns `is_estimate=True` and a hard `disclaimer`.
+
+### Changed
+
+- Package version **0.3.0**.
+- README / `__init__` lead with load → mutate → validate → re-queue (templates
+  are secondary).
+- Install docs: **not on PyPI** — `pip install git+https://...` or local
+  `pip install -e .`. `make publish` still refuses silent uploads.
+- `validate_workflow_complete` warns that link checks alone are incomplete
+  without object_info.
+
+### Deprecated
+
+- `ComfyWorkflow.to_graph_format()` / `save_graph_json()` — empty-links skeleton
+  is **not** a UI↔API converter; raises `DeprecationWarning`. Use
+  `to_api_format` / `save_api_json`.
+
 ## [0.2.0] - 2026-07-11
 
 Minor release: load → mutate → seed batch for existing Save (API Format) graphs.
