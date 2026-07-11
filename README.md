@@ -185,9 +185,13 @@ class MyCustomTemplate:
 
 Prefer real ComfyUI `class_type` names from `/object_info`. Do not invent speculative custom nodes.
 
+## Roadmap
+
+Evidence-based plan (ComfyUI issue pain → version slices, “queue time saved” release rule, explicit non-goals): **[ROADMAP.md](ROADMAP.md)**.
+
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Product scope: [PERSONALIZATION.md](PERSONALIZATION.md). Sync vs private stacks: [SYNC_POLICY.md](SYNC_POLICY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Product scope: [PERSONALIZATION.md](PERSONALIZATION.md). Sync vs private stacks: [SYNC_POLICY.md](SYNC_POLICY.md). Roadmap steering topics: [ROADMAP.md](ROADMAP.md#6-how-the-community-can-steer).
 
 ## License
 
