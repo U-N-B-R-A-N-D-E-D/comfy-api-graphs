@@ -199,7 +199,7 @@ Built by **[ U N B R A N D E D ]**. Maintained by **[ U N B R A N D E D ]**.
 
 Experience-informed utility for ComfyUI API-format graphs and `/prompt` automation — not a dump of private production pipelines.
 
-Thanks to the ComfyUI team and the wider custom-node community.
+Thanks to the ComfyUI team and the wider custom-node community. FLUX.1 is by Black Forest Labs; SDXL is by Stability AI — templates here only teach common ComfyUI wiring patterns around those models.
 
 ## Public release checklist
 
@@ -212,12 +212,14 @@ Done in this tree:
 - [x] Package metadata describes offline API-format graph builders + templates + validation
 - [x] No `/home/...` absolute paths / no private studio identifiers in tracked content
 - [x] Video recipes quarantined (stubs only; no stale LTX/Wan JSON)
-- [x] First commit on `main` + local tag `v0.1.0`
+- [x] First commit on `main` + tag `v0.1.0`
 - [x] `make publish` / `make publish-test` stay blocked (no accidental PyPI)
+- [x] Public GitHub: https://github.com/U-N-B-R-A-N-D-E-D/comfy-api-graphs
+- [x] `origin` remote + `main` + `v0.1.0` pushed
+- [x] `[project.urls]` filled with the real repo URL
 
-Human-only (blocked until `gh auth login`):
+Optional later:
 
-- [ ] Create public GitHub repo named `comfy-api-graphs` under your **[ U N B R A N D E D ]** org or personal account
-- [ ] `git remote add origin <url>` && `git push -u origin main` && `git push origin v0.1.0`
-- [ ] Fill `[project.urls]` in `pyproject.toml` with the real repo URL
-- [ ] Optional later: intentional PyPI publish (never via silent `make publish`)
+- [ ] Intentional PyPI publish (never via silent `make publish`)
+- [ ] Rewrite git author emails if you do not want studio addresses on public history
+- [ ] GitHub Actions CI (pytest) once you want green badges that are real
