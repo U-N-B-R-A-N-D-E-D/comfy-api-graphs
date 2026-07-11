@@ -7,10 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — load / mutate / seed batch (v0.2 queue-time payback)
+
+- `ComfyWorkflow.from_api_json` / `from_api_dict`: load Save (API Format) graphs
+  (or `{"prompt": ...}` wrappers) without rebuilding from templates.
+- Mutators: `set_input`, `set_inputs`, `set_input_by_class_type`, `set_input_by_title`.
+- `randomize_seeds()` / `bump_seeds(n)` for API batch loops (#850 / #1085 class).
+- Cookbook: `examples/seed_batch_cookbook.py` (dry-run write or live `/prompt`).
+- Fixture + tests under `tests/fixtures/minimal_api_graph.json`.
+
+  **Queue time saved:** stop hand-editing seeds in JSON and stop re-exporting
+  from the node editor for every batch variation.
+
 ### Removed — public roadmap
 
 - Deleted `ROADMAP.md` and all public pointers (README, `project.urls`).
-  Planning stays internal; version remains **0.1.0**.
+  Planning stays internal; version remains **0.1.0** until this mutate slice
+  is cut as a tagged minor.
 
 ### Changed — public package rename
 

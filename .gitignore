@@ -118,3 +118,7 @@ ComfyUI/
 *.key
 secrets/
 .secrets/
+
+# Local-only planning (never commit)
+.local/
+LOCAL_ROADMAP.md

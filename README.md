@@ -157,6 +157,19 @@ Sanity-check wiring and rough VRAM before you burn a queue slot.
 
 This library builds JSON; it does not run diffusion. See `examples/execution_example.py` for a localhost `/prompt` + history poll loop.
 
+Load an existing Save (API Format) export, mutate seeds, and batch:
+
+```python
+from comfy_api_graphs import ComfyWorkflow
+
+wf = ComfyWorkflow.from_api_json("my_graph_api.json")
+wf.set_input_by_class_type("CLIPTextEncode", "text", "a new prompt")
+wf.randomize_seeds()
+wf.save_api_json("my_graph_api.seeded.json")
+```
+
+Or run `examples/seed_batch_cookbook.py` for a dry-run / live queue loop.
+
 ## Examples
 
 Files that exist under `examples/`:
@@ -166,6 +179,7 @@ Files that exist under `examples/`:
 - `custom_workflow.py` — low-level `ComfyWorkflow` build
 - `utility_templates_example.py` — upscale / inpaint / outpaint / character refs
 - `execution_example.py` — queue on local ComfyUI
+- `seed_batch_cookbook.py` — load API JSON → mutate seeds → write or `/prompt`
 - `video_generation.py` — shows quarantined stubs raise `NotImplementedError`
 
 Examples write `*.json` at the repo root (gitignored). Regenerate anytime by running them.

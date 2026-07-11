@@ -2,6 +2,10 @@
 Tests for core workflow building functionality.
 """
 
+import json
+import random
+from pathlib import Path
+
 import pytest
 from comfy_api_graphs import ComfyWorkflow, WorkflowNode
 from comfy_api_graphs import (
@@ -9,6 +13,9 @@ from comfy_api_graphs import (
     estimate_vram_usage,
     validate_workflow_complete,
 )
+
+FIXTURES = Path(__file__).parent / "fixtures"
+MINIMAL_API = FIXTURES / "minimal_api_graph.json"
 
 
 class TestWorkflowNode:
@@ -361,3 +368,80 @@ class TestComplexWorkflows:
         assert model_sampler.inputs["model"] == ["ckpt", 0]
         assert text_encoder.inputs["clip"] == ["ckpt", 1]
         assert vae_decoder.inputs["vae"] == ["ckpt", 2]
+
+
+class TestLoadAndMutate:
+    """v0.2: from_api_json + seed / input mutators."""
+
+    def test_from_api_json_path(self):
+        wf = ComfyWorkflow.from_api_json(MINIMAL_API)
+
+        assert wf.name == "minimal_api_graph"
+        assert len(wf) == 6
+        assert wf.get_node("4").class_type == "KSampler"
+        assert wf.get_node("4").inputs["seed"] == 42
+        assert wf.get_node("1").title == "Load Checkpoint"
+        assert validate_node_references(wf) == []
+
+    def test_from_api_dict_prompt_wrapper(self):
+        raw = json.loads(MINIMAL_API.read_text(encoding="utf-8"))
+        wrapped = {"prompt": raw, "client_id": "test"}
+        wf = ComfyWorkflow.from_api_dict(wrapped, name="wrapped")
+
+        assert wf.name == "wrapped"
+        assert len(wf) == 6
+
+    def test_from_api_json_rejects_ui_shaped(self):
+        ui_shaped = {"nodes": [], "links": [], "version": 0.4}
+        with pytest.raises(ValueError, match="API-format"):
+            ComfyWorkflow.from_api_dict(ui_shaped)
+
+    def test_set_input_by_id_and_class_type(self):
+        wf = ComfyWorkflow.from_api_json(MINIMAL_API)
+
+        wf.set_input("2", "text", "a dog")
+        assert wf.get_node("2").inputs["text"] == "a dog"
+
+        n = wf.set_input_by_class_type("KSampler", "steps", 30)
+        assert n == 1
+        assert wf.get_node("4").inputs["steps"] == 30
+
+        n = wf.set_input_by_title("Positive", "text", "a bird")
+        assert n == 1
+        assert wf.get_node("2").inputs["text"] == "a bird"
+
+    def test_set_input_missing_node(self):
+        wf = ComfyWorkflow.from_api_json(MINIMAL_API)
+        with pytest.raises(KeyError):
+            wf.set_input("999", "seed", 1)
+
+    def test_randomize_seeds_deterministic(self):
+        wf = ComfyWorkflow.from_api_json(MINIMAL_API)
+        updated = wf.randomize_seeds(rng=random.Random(0))
+
+        assert updated == ["4"]
+        assert wf.get_node("4").inputs["seed"] != 42
+        assert isinstance(wf.get_node("4").inputs["seed"], int)
+
+    def test_bump_seeds(self):
+        wf = ComfyWorkflow.from_api_json(MINIMAL_API)
+        updated = wf.bump_seeds(5)
+
+        assert updated == ["4"]
+        assert wf.get_node("4").inputs["seed"] == 47
+
+    def test_roundtrip_save_load(self, tmp_path):
+        wf = ComfyWorkflow.from_api_json(MINIMAL_API)
+        wf.bump_seeds(1)
+        out = tmp_path / "roundtrip.json"
+        wf.save_api_json(str(out))
+
+        loaded = ComfyWorkflow.from_api_json(out)
+        assert loaded.get_node("4").inputs["seed"] == 43
+        assert loaded.to_api_format()["4"]["inputs"]["seed"] == 43
+
+    def test_add_node_after_load_avoids_id_collision(self):
+        wf = ComfyWorkflow.from_api_json(MINIMAL_API)
+        new = wf.add_node("PreviewImage", {"images": ["5", 0]})
+        assert new.node_id == "7"
+        assert "7" in wf.nodes
