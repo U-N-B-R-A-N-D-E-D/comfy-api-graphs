@@ -61,7 +61,6 @@ Homepage = "https://github.com/U-N-B-R-A-N-D-E-D/comfy-api-graphs"
 Repository = "https://github.com/U-N-B-R-A-N-D-E-D/comfy-api-graphs"
 Issues = "https://github.com/U-N-B-R-A-N-D-E-D/comfy-api-graphs/issues"
 Changelog = "https://github.com/U-N-B-R-A-N-D-E-D/comfy-api-graphs/blob/main/CHANGELOG.md"
-Roadmap = "https://github.com/U-N-B-R-A-N-D-E-D/comfy-api-graphs/blob/main/ROADMAP.md"
 # Install from source until a real PyPI publish exists: pip install -e ".[dev,examples]"
 
 [tool.hatch.build.targets.wheel]
