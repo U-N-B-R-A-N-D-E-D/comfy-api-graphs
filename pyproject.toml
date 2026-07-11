@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "comfy-api-graphs"
-version = "0.1.0"
+version = "0.2.0"
 description = "Offline Python builders for ComfyUI API-format graphs by [ U N B R A N D E D ]. FLUX/SDXL templates + validation — not a ComfyUI runtime."
 readme = "README.md"
 license = {text = "MIT"}

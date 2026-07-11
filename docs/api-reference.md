@@ -13,11 +13,26 @@ class ComfyWorkflow:
                  node_id: Optional[str] = None,
                  title: Optional[str] = None) -> WorkflowNode
     def get_node(self, node_id: str) -> Optional[WorkflowNode]
+    @classmethod
+    def from_api_json(cls, filepath: str, name: Optional[str] = None) -> "ComfyWorkflow"
+    @classmethod
+    def from_api_dict(cls, data: Dict[str, Any], name: str = "workflow") -> "ComfyWorkflow"
+    def set_input(self, node_id: str, key: str, value: Any) -> "ComfyWorkflow"
+    def set_inputs(self, node_id: str, **inputs: Any) -> "ComfyWorkflow"
+    def set_input_by_class_type(self, class_type: str, key: str, value: Any,
+                                *, all_matches: bool = True) -> int
+    def set_input_by_title(self, title: str, key: str, value: Any,
+                           *, all_matches: bool = True) -> int
+    def randomize_seeds(self, ...) -> List[str]
+    def bump_seeds(self, n: int = 1, ...) -> List[str]
     def to_api_format(self) -> Dict[str, Any]
     def to_graph_format(self) -> Dict[str, Any]
     def save_api_json(self, filepath: str) -> None
     def save_graph_json(self, filepath: str) -> None
 ```
+
+Load a Save (API Format) export, mutate prompts/seeds, then re-export or queue.
+See `examples/seed_batch_cookbook.py`.
 
 ### `WorkflowNode`
 

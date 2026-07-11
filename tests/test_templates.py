@@ -1,5 +1,5 @@
 """
-Tests for workflow templates (public gold-mine set).
+Tests for workflow templates (public FLUX / SDXL / utility set).
 """
 
 import pytest
