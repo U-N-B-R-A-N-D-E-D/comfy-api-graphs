@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — README noise trim
+
+- Dropped decorative Black badge (no CI enforce), internal release checklist, and
+  “gold mine” wording. Keep acknowledgments to ComfyUI / BFL / Stability only.
+
 ### Added — load / mutate / seed batch (v0.2 queue-time payback)
 
 - `ComfyWorkflow.from_api_json` / `from_api_dict`: load Save (API Format) graphs

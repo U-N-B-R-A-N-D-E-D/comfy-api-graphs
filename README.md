@@ -2,7 +2,6 @@
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Zero-dependency Python → ComfyUI **API-format** JSON by **[ U N B R A N D E D ]**.
 
@@ -110,7 +109,7 @@ positive = wf.add_node(
 errors = validate_node_references(wf)
 ```
 
-## Available templates (public gold mine)
+## Available templates
 
 | Template | Purpose | Notes |
 |----------|---------|--------|
@@ -201,7 +200,7 @@ Prefer real ComfyUI `class_type` names from `/object_info`. Do not invent specul
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Product scope: [PERSONALIZATION.md](PERSONALIZATION.md). Sync vs private stacks: [SYNC_POLICY.md](SYNC_POLICY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Maintainer scope notes: [PERSONALIZATION.md](PERSONALIZATION.md), [SYNC_POLICY.md](SYNC_POLICY.md).
 
 ## License
 
@@ -209,31 +208,4 @@ MIT License — Copyright (c) 2026 [ U N B R A N D E D ]. See [LICENSE](LICENSE)
 
 ## Acknowledgments
 
-Built by **[ U N B R A N D E D ]**. Maintained by **[ U N B R A N D E D ]**.
-
-Experience-informed utility for ComfyUI API-format graphs and `/prompt` automation — not a dump of private production pipelines.
-
 Thanks to the ComfyUI team and the wider custom-node community. FLUX.1 is by Black Forest Labs; SDXL is by Stability AI — templates here only teach common ComfyUI wiring patterns around those models.
-
-## Public release checklist
-
-Done in this tree:
-
-- [x] Public name: **comfy-api-graphs** (`comfy_api_graphs` import)
-- [x] MIT `LICENSE` © [ U N B R A N D E D ]
-- [x] README as single front door (English)
-- [x] `.gitignore` for Python / venv / caches / `.env` / generated JSON / Comfy outputs
-- [x] Package metadata describes offline API-format graph builders + templates + validation
-- [x] No `/home/...` absolute paths / no private studio identifiers in tracked content
-- [x] Video recipes quarantined (stubs only; no stale LTX/Wan JSON)
-- [x] First commit on `main` + tag `v0.1.0`
-- [x] `make publish` / `make publish-test` stay blocked (no accidental PyPI)
-- [x] Public GitHub: https://github.com/U-N-B-R-A-N-D-E-D/comfy-api-graphs
-- [x] `origin` remote + `main` + `v0.1.0` pushed
-- [x] `[project.urls]` filled with the real repo URL
-
-Optional later:
-
-- [ ] Intentional PyPI publish (never via silent `make publish`)
-- [ ] Rewrite git author emails if you do not want studio addresses on public history
-- [ ] GitHub Actions CI (pytest) once you want green badges that are real
