@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import random
+import warnings
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -185,17 +186,27 @@ class ComfyWorkflow:
 
     def to_graph_format(self) -> Dict[str, Any]:
         """
-        Export a **minimal** UI-oriented graph skeleton.
+        DEPRECATED: minimal UI-oriented **skeleton** — not a UI↔API converter.
 
-        Honesty note: this does **not** reconstruct full frontend ``links``
-        arrays or layout from API-format socket refs. Nodes are listed with
-        default ``pos``/``size`` and an empty ``links`` list. Prefer
-        ``to_api_format()`` for execution; use Save (API Format) / Save from
-        the ComfyUI UI when you need a complete editable graph.
+        Does **not** reconstruct frontend ``links``, ``widgets_values``, or
+        layout from API-format socket refs. Empty ``links`` means this will
+        **not** round-trip into the ComfyUI frontend as a working graph.
+
+        Prefer ``to_api_format()`` / ``save_api_json()`` for execution.
+        Design complex graphs in the UI → Save (API Format).
 
         Returns:
             Dict with ``nodes``, empty ``links``, and version metadata.
         """
+        warnings.warn(
+            "ComfyWorkflow.to_graph_format() is deprecated and does NOT "
+            "produce a loadable ComfyUI frontend workflow (empty links, "
+            "no widgets_values). Use to_api_format() / save_api_json() for "
+            "/prompt. Design in the UI → Save (API Format) for editable graphs. "
+            "See Comfy-Org/ComfyUI#3050 / #1112.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         nodes_array = []
         links_array: List[Any] = []
 
@@ -238,7 +249,11 @@ class ComfyWorkflow:
             f.write("\n")
 
     def save_graph_json(self, filepath: str) -> None:
-        """Write the minimal graph skeleton from ``to_graph_format()``."""
+        """
+        DEPRECATED: write the skeleton from ``to_graph_format()``.
+
+        Does not produce a frontend-loadable workflow. Prefer ``save_api_json``.
+        """
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(self.to_graph_format(), f, indent=2)
             f.write("\n")

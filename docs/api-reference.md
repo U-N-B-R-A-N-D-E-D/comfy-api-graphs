@@ -26,13 +26,16 @@ class ComfyWorkflow:
     def randomize_seeds(self, ...) -> List[str]
     def bump_seeds(self, n: int = 1, ...) -> List[str]
     def to_api_format(self) -> Dict[str, Any]
-    def to_graph_format(self) -> Dict[str, Any]
+    def to_graph_format(self) -> Dict[str, Any]  # DEPRECATED — empty links
     def save_api_json(self, filepath: str) -> None
-    def save_graph_json(self, filepath: str) -> None
+    def save_graph_json(self, filepath: str) -> None  # DEPRECATED
 ```
 
 Load a Save (API Format) export, mutate prompts/seeds, then re-export or queue.
 See `examples/seed_batch_cookbook.py`.
+
+`to_graph_format` / `save_graph_json` raise `DeprecationWarning` and do **not**
+produce a frontend-loadable workflow.
 
 ### `WorkflowNode`
 
@@ -191,21 +194,44 @@ Validates that all node references point to existing nodes.
 
 **Returns:** List of error messages (empty if valid)
 
+### `load_object_info` / `fetch_object_info`
+
+```python
+def load_object_info(path_or_dict) -> Dict[str, Any]
+def fetch_object_info(url: str = "http://127.0.0.1:8188/object_info", *, timeout: float = 60.0) -> Dict[str, Any]
+```
+
+Load a cached `/object_info` snapshot or fetch from a running ComfyUI (stdlib).
+
+### `validate_against_object_info`
+
+```python
+def validate_against_object_info(
+    workflow: ComfyWorkflow,
+    object_info: Dict[str, Any],
+    *,
+    unknown_inputs_as_errors: bool = False,
+) -> Dict[str, Any]
+```
+
+Schema-check `class_type`, required inputs, and output-slot bounds.
+
+**Returns:** `valid`, `errors`, `warnings`, `info`, `node_count`.
+
 ### `estimate_vram_usage`
 
 ```python
 def estimate_vram_usage(workflow: ComfyWorkflow) -> Dict[str, Any]
 ```
 
-Estimates VRAM requirements based on model loaders.
+**Planning hint only** — not a VRAM predictor (GGUF/NVFP4/resolution dominate).
 
 **Returns:** Dictionary with:
-- `estimated_vram_gb`: Total estimated VRAM
-- `model_vram_gb`: VRAM from models only
-- `overhead_gb`: Generation overhead estimate
-- `model_loaders`: Count of model loaders
-- `details`: List of per-model estimates
-- `recommendation`: String advice
+- `estimated_vram_gb`: Hint number from class_type heuristics
+- `is_estimate`: Always `True`
+- `disclaimer`: Hard warning string — do not size hardware on this
+- `model_vram_gb`, `overhead_gb`, `model_loaders`, `details`
+- `recommendation`: Soft hint language only
 
 ### `validate_workflow_complete`
 
@@ -213,7 +239,8 @@ Estimates VRAM requirements based on model loaders.
 def validate_workflow_complete(workflow: ComfyWorkflow) -> Dict[str, Any]
 ```
 
-Comprehensive workflow validation (see `validation.py`).
+Link + completeness heuristics only. Prefer `validate_against_object_info`
+before production queues.
 
 ---
 

@@ -78,7 +78,7 @@ Wire links with `node.get_output_ref(index)` — same `[node_id, output_index]` 
 ```
 src/comfy_api_graphs/
   core.py           # WorkflowNode, ComfyWorkflow
-  validation.py     # validate_node_references, estimate_vram_usage, ...
+  validation.py     # links, object_info schema, VRAM planning hint, ...
   templates/        # FLUX, SDXL, utility (+ video_templates stubs, not public API)
 tests/
 examples/
