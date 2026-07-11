@@ -5,8 +5,8 @@ FLUX.1 by Black Forest Labs is a text-to-image model commonly run in ComfyUI
 via UNETLoader + DualCLIPLoader (T5-XXL + CLIP-L) + VAELoader (ae.safetensors).
 
 These templates teach correct graph structure for T2I / I2I / inpaint.
-They are not production "secret sauce" — you still need matching checkpoint,
-CLIP, VAE, and optional LoRA files under your local ComfyUI ``models/`` tree.
+You still need matching checkpoint, CLIP, VAE, and optional LoRA files under
+your local ComfyUI ``models/`` tree.
 
 Comfy slang used here: checkpoint/UNET, CLIP, VAE, KSampler, latent, denoise,
 CFG, LoRA stack, LoadImage, SaveImage, API format.

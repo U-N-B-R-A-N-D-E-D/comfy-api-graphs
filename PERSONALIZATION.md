@@ -9,7 +9,7 @@ Maintained by **[ U N B R A N D E D ]**.
 
 ---
 
-## Product intent (public gold mine, not secret sauce)
+## Product intent
 
 **What this package is**
 
@@ -80,7 +80,7 @@ If you need those, they belong in your private repos or local skills —
 │  PRIVATE: your production stack         │
 │  Private workflow API JSON + workers    │
 │  Separate templates / local skills      │
-│  NEVER reverse-sync secret sauce here   │
+│  NEVER reverse-sync private recipes here │
 └─────────────────────────────────────────┘
 ```
 
