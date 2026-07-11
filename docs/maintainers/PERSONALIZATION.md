@@ -29,9 +29,9 @@ Maintained by **[ U N B R A N D E D ]**.
 - Not a private production stack. Private workers, orchestration hooks,
   private infra, third-party integrations, and private model stacks live elsewhere.
 - Not a claim that “we published the full studio pipeline.”
-- Not a fake PyPI / GitHub release story. Treat `0.1.0` as an early public-core posture:
+- Not a fake PyPI / GitHub release story. Treat tags as source-install releases:
   clone the repo, `pip install -e .`, run tests. Publish when packaging is real — don’t
-  document install paths that don’t exist yet.
+  document install paths that don’t exist yet. `make publish` stays blocked.
 - Not a bidirectional sync layer with private monorepos. See [SYNC_POLICY.md](SYNC_POLICY.md).
 
 ---
@@ -115,16 +115,16 @@ was a leak vector; it is intentionally gone.
 
 | Item | Posture |
 |------|---------|
-| Package version | `0.1.0` — early public core, not a polished marketplace release |
+| Package version | `0.2.0` — load / mutate / seed batch shipped; still source-install |
 | Install | Local / editable: `pip install -e ".[dev,examples]"` |
-| PyPI | Do not claim until a real release exists |
-| SemVer | Still useful for *this* repo’s tags; not a promise of private production pins |
+| PyPI | Do not claim until a real publish exists (`make publish` blocked) |
+| SemVer | Applies to *this* repo’s tags; not a promise of private production pins |
 
 ---
 
 ## Related docs
 
 - [SYNC_POLICY.md](SYNC_POLICY.md) — one-way boundary; no bidirectional fiction
-- [README.md](README.md) — community-facing framing (Scope block)
-- [CHANGELOG.md](CHANGELOG.md) — repositioning notes
-- [CONTRIBUTING.md](CONTRIBUTING.md) — what PRs may / may not include
+- [../../README.md](../../README.md) — community-facing framing (Scope block)
+- [../../CHANGELOG.md](../../CHANGELOG.md) — release notes
+- [../../CONTRIBUTING.md](../../CONTRIBUTING.md) — what PRs may / may not include

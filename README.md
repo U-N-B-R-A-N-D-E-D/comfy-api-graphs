@@ -29,6 +29,8 @@ Public core for ComfyUI **API-format graphs**: nodes, latents, checkpoints, LoRA
 ## Features
 
 - **Programmatic workflows**: Build ComfyUI graphs in pure Python
+- **Load and mutate**: `from_api_json` / mutators / seed helpers for Save (API Format) exports
+- **Seed batch cookbook**: dry-run write or live `/prompt` loop (`examples/seed_batch_cookbook.py`)
 - **Community-safe templates**: FLUX.1 and SDXL T2I / I2I / inpaint, plus utility patterns (upscale, outpaint, character refs)
 - **Validation**: Check node references and estimate VRAM before queueing
 - **Multiple formats**: API format (execution) or simplified graph format (UI sketch)
@@ -200,7 +202,7 @@ Prefer real ComfyUI `class_type` names from `/object_info`. Do not invent specul
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Maintainer scope notes: [PERSONALIZATION.md](PERSONALIZATION.md), [SYNC_POLICY.md](SYNC_POLICY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

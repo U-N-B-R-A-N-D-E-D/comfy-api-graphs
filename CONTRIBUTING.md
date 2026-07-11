@@ -39,8 +39,8 @@ This is a graph-construction library. Treat node identity like an API contract.
 - **API format vs UI format.** Ship and test **API-format** graphs (`to_api_format` / Save API Format). Do not PR “it looked right in the UI JSON” without an API-format payload that queues.
 - **Test against live Comfy when you can.** Unit tests catch broken links; only a running ComfyUI + `/prompt` proves checkpoint paths, LoRA loaders, and custom nodes resolve. Mark live checks clearly; do not require CI to reach a GPU box.
 - **Do not submit unverified node names.** If you cannot run `/object_info` or queue a minimal graph, say so in the PR and keep the change scoped (docs-only, link-validator fix, etc.).
-- **Keep proprietary stacks out.** Institutional checkpoints, locked video recipes, private orchestration wiring, and private worker JSON do not belong here. Generic FLUX/SDXL/utility patterns only. See `SYNC_POLICY.md` / `PERSONALIZATION.md`.
-- **No bidirectional “sync with studio” PRs.** This package is not the source of truth for production workers. Do not land private pipeline dumps “for parity.”
+- **Keep proprietary stacks out.** Institutional checkpoints, locked video recipes, private orchestration wiring, and private worker JSON do not belong here. Generic FLUX/SDXL/utility patterns only.
+- **No bidirectional “sync with studio” PRs.** This package is not the source of truth for production workers. Do not land private pipeline dumps “for parity.” Maintainer boundary notes (optional): `docs/maintainers/`.
 - **Video templates stay quarantined stubs.** `create()` raises `NotImplementedError`. Do not market LTX/Wan as working recipes. Never paste locked production knobs.
 
 ## Adding a template

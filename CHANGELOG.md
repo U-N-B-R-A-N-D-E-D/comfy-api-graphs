@@ -7,61 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed — README noise trim
+## [0.2.0] - 2026-07-11
 
-- Dropped decorative Black badge (no CI enforce), internal release checklist, and
-  “gold mine” wording. Keep acknowledgments to ComfyUI / BFL / Stability only.
+Minor release: load → mutate → seed batch for existing Save (API Format) graphs.
+Install from source (`pip install -e .`). `make publish` stays blocked until a
+real PyPI publish is configured.
 
-### Added — load / mutate / seed batch (v0.2 queue-time payback)
+### Added
 
 - `ComfyWorkflow.from_api_json` / `from_api_dict`: load Save (API Format) graphs
   (or `{"prompt": ...}` wrappers) without rebuilding from templates.
 - Mutators: `set_input`, `set_inputs`, `set_input_by_class_type`, `set_input_by_title`.
-- `randomize_seeds()` / `bump_seeds(n)` for API batch loops (#850 / #1085 class).
+- `randomize_seeds()` / `bump_seeds(n)` for API batch loops.
 - Cookbook: `examples/seed_batch_cookbook.py` (dry-run write or live `/prompt`).
 - Fixture + tests under `tests/fixtures/minimal_api_graph.json`.
 
-  **Queue time saved:** stop hand-editing seeds in JSON and stop re-exporting
-  from the node editor for every batch variation.
+### Changed
 
-### Removed — public roadmap
+- Package version **0.2.0** (`pyproject.toml`, `__version__`).
+- README soft-announce matches the load → mutate → seed-batch story (no oversell).
+- Maintainer-only scope notes moved under `docs/maintainers/` (off the community
+  front door). CONTRIBUTING keeps the public contribution rules.
+- Dropped decorative Black badge, internal release checklist, and similar
+  front-door noise. Acknowledgments stay ComfyUI / BFL / Stability only.
 
-- Deleted `ROADMAP.md` and all public pointers (README, `project.urls`).
-  Planning stays internal; version remains **0.1.0** until this mutate slice
-  is cut as a tagged minor.
+### Removed
 
-### Changed — public package rename
+- Public `ROADMAP.md` and all public pointers (planning stays internal).
 
-- Renamed **comfyui-workflow-builder** → **comfy-api-graphs** (import: `comfy_api_graphs`).
-  Sharper wedge: offline API-format graph builders, not a generic “workflow builder” /
-  runtime competitor. PyPI + GitHub slug free at rename time.
+### Notes (carried from 0.1.x posture work)
 
-### Changed — public attribution
-
-- Credit / copyright / authors / maintainers → **[ U N B R A N D E D ]**
-- Removed studio homepage URL from `pyproject.toml` (no fake publish links)
-- Docs speak experience-informed ComfyAPI automation — no “extracted from private
-  production” marketing; private stacks named generically in sync/scope docs
-
-### Changed — product scope honesty (public core posture)
-
-- Rewrote `PERSONALIZATION.md` and `SYNC_POLICY.md`: public package = **minimal shared
-  core**; private production stacks stay separate (private JSON/workers). No bidirectional
-  sync, no production pin-to-PyPI fiction, no public inventory of institutional model filenames.
-- README Scope block points maintainers at that boundary; UI → Save (API Format) remains king.
-- Version remains **0.1.0** until a real publish decision — this is documentation /
-  posture, not a feature release.
-
-### Changed — template gold-mine curation
-
-- FLUX T2I/I2I/inpaint: empty negative via real `CLIPTextEncode("")`; `ModelSamplingFlux`
-  includes width/height; inpaint uses `ImageToMask` + `SetLatentNoiseMask`
-- SDXL refiner path re-encodes prompts with the refiner CLIP
-- Outpaint: `ImagePadForOutpaint` mask → `SetLatentNoiseMask`; latent upscale uses
-  `LatentUpscaleBy`
-- Public package `__all__` exports FLUX + SDXL + utilities only (no LTX/Wan)
-- Examples: `utility_templates_example.py` replaces video demo; README lists real files
-- Root sample JSON regenerated from curated FLUX templates; stale LTX/Wan JSON removed
+- Public package rename: **comfyui-workflow-builder** → **comfy-api-graphs**
+  (import: `comfy_api_graphs`).
+- Attribution: **[ U N B R A N D E D ]**.
+- Public vs private boundary documented for maintainers only (no bidirectional
+  sync fiction, no fake PyPI pins).
+- Template curation: FLUX / SDXL / utility patterns; video stubs stay
+  quarantined (`NotImplementedError`).
 
 ## [0.1.0] - 2026-05-12
 

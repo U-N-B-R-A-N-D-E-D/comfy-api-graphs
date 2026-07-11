@@ -83,14 +83,14 @@ edge refs”) and re-implement it cleanly here — without the private knobs.
 ## Versioning (this repo only)
 
 - Semantic versioning applies to **this** package’s tags and CHANGELOG.
-- `0.1.0` = early public-core posture, not a marketplace launch.
+- `0.2.0` = load / mutate / seed batch on the public core; still source-install.
 - Real PyPI publishing is a separate decision; until then, install from source:
-  `pip install -e ".[dev,examples]"`.
+  `pip install -e ".[dev,examples]"`. `make publish` stays blocked.
 
 ---
 
 ## Questions
 
 - Product scope & public/internal boundary → [PERSONALIZATION.md](PERSONALIZATION.md)
-- Community install / usage framing → [README.md](README.md)
-- Changelog of the repositioning → [CHANGELOG.md](CHANGELOG.md)
+- Community install / usage framing → [../../README.md](../../README.md)
+- Changelog → [../../CHANGELOG.md](../../CHANGELOG.md)
