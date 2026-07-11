@@ -7,11 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added — community roadmap
+### Removed — public roadmap
 
-- `ROADMAP.md`: north star, Release rule, ComfyUI issue evidence table,
-  v0.2/v0.3/v0.4+ plan tied to queue time saved, explicit non-goals, steering topics.
-- README pointer to the roadmap. Docs only — version remains **0.1.0**.
+- Deleted `ROADMAP.md` and all public pointers (README, `project.urls`).
+  Planning stays internal; version remains **0.1.0**.
 
 ### Changed — public package rename
 
