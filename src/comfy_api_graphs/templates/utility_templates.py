@@ -10,7 +10,7 @@ These are teaching graphs. You still need matching checkpoints / upscaler
 private studio stacks.
 """
 
-from typing import List, Optional
+from typing import Optional
 
 from ..core import ComfyWorkflow
 
@@ -80,10 +80,10 @@ class CharacterReferenceTemplate:
         base_seed: int = 42,
         width: int = 512,
         height: int = 768,
-        angles: Optional[List[str]] = None,
+        angles: Optional[list[str]] = None,
         lora: Optional[str] = None,
         lora_strength: float = 1.0,
-    ) -> List[ComfyWorkflow]:
+    ) -> list[ComfyWorkflow]:
         """
         Create one SDXL T2I workflow per reference angle.
 
@@ -104,11 +104,9 @@ class CharacterReferenceTemplate:
 
         angle_configs = cls.REFERENCE_ANGLES
         if angles:
-            angle_configs = [
-                a for a in cls.REFERENCE_ANGLES if a["suffix"] in angles
-            ]
+            angle_configs = [a for a in cls.REFERENCE_ANGLES if a["suffix"] in angles]
 
-        workflows: List[ComfyWorkflow] = []
+        workflows: list[ComfyWorkflow] = []
         for i, angle_config in enumerate(angle_configs):
             prompt_parts = [appearance]
             if style:
@@ -206,9 +204,7 @@ class UpscaleTemplate:
         """
         wf = ComfyWorkflow("upscale")
 
-        load_image = wf.add_node(
-            "LoadImage", {"image": image_path}, title="LoadImage"
-        )
+        load_image = wf.add_node("LoadImage", {"image": image_path}, title="LoadImage")
 
         if use_latent_upscale:
             checkpoint = wf.add_node(
@@ -362,12 +358,8 @@ class InpaintTemplate:
             title="Load Checkpoint",
         )
 
-        load_image = wf.add_node(
-            "LoadImage", {"image": image_path}, title="LoadImage"
-        )
-        load_mask = wf.add_node(
-            "LoadImage", {"image": mask_path}, title="Load Mask Image"
-        )
+        load_image = wf.add_node("LoadImage", {"image": image_path}, title="LoadImage")
+        load_mask = wf.add_node("LoadImage", {"image": mask_path}, title="Load Mask Image")
 
         if width > 0 and height > 0:
             resize_img = wf.add_node(
@@ -538,9 +530,7 @@ class OutpaintTemplate:
         vae_ref = checkpoint.get_output_ref(2)
         clip_ref = checkpoint.get_output_ref(1)
 
-        load_image = wf.add_node(
-            "LoadImage", {"image": image_path}, title="LoadImage"
-        )
+        load_image = wf.add_node("LoadImage", {"image": image_path}, title="LoadImage")
 
         padded = wf.add_node(
             "ImagePadForOutpaint",

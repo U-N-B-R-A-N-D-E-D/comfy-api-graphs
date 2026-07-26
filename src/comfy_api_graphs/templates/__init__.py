@@ -8,13 +8,13 @@ Video templates (LTX, Wan) are quarantined stubs under ``video_templates`` —
 they raise ``NotImplementedError`` and are not part of the public package API.
 """
 
-from .flux_templates import FluxTxt2ImgTemplate, FluxImg2ImgTemplate, FluxInpaintTemplate
-from .sdxl_templates import SdxlTxt2ImgTemplate, SdxlImg2ImgTemplate
+from .flux_templates import FluxImg2ImgTemplate, FluxInpaintTemplate, FluxTxt2ImgTemplate
+from .sdxl_templates import SdxlImg2ImgTemplate, SdxlTxt2ImgTemplate
 from .utility_templates import (
     CharacterReferenceTemplate,
-    UpscaleTemplate,
     InpaintTemplate,
     OutpaintTemplate,
+    UpscaleTemplate,
 )
 
 __all__ = [
