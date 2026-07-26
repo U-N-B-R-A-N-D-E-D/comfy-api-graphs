@@ -531,6 +531,263 @@ class ComfyWorkflow:
                 updated.append(node_id)
         return updated
 
+    # --- Graph introspection / mutation (v0.4 community helpers) ---------
+
+    @staticmethod
+    def _is_node_reference(value: Any) -> bool:
+        """True if ``value`` is a ComfyUI socket link ``[node_id, output_index]``."""
+        if not isinstance(value, list) or len(value) != 2:
+            return False
+        ref_id, ref_idx = value
+        return isinstance(ref_id, str) and isinstance(ref_idx, int)
+
+    def iter_links(self) -> Iterable[tuple[str, int, str, str]]:
+        """
+        Yield every socket link in the graph as ``(src_id, src_slot, dst_id, dst_input)``.
+
+        Walks each node's ``inputs`` and emits one tuple per ``[src_id, slot]``
+        link. Nested lists (e.g. some conditioning bags) are walked one level
+        deep. The placeholder ``["0", 0]`` (empty-conditioning hack) is skipped.
+
+        Useful for diffing, building DOT/Mermaid views, or auditing wiring
+        without re-implementing the link walker in every consumer.
+
+        Example:
+            >>> for src_id, slot, dst_id, dst_input in wf.iter_links():
+            ...     print(f"{src_id}.{slot} -> {dst_id}.{dst_input}")
+        """
+        for dst_id, node in self.nodes.items():
+            for input_name, input_value in node.inputs.items():
+                refs: list[Any] = []
+                if self._is_node_reference(input_value):
+                    refs = [input_value]
+                elif isinstance(input_value, list):
+                    refs = [v for v in input_value if self._is_node_reference(v)]
+                for ref in refs:
+                    ref_id, ref_idx = ref
+                    if ref_id == "0" and ref_idx == 0:
+                        continue
+                    yield (ref_id, ref_idx, dst_id, input_name)
+
+    def remove_node(self, node_id: str) -> ComfyWorkflow:
+        """
+        Remove ``node_id`` and clean up links pointing at it.
+
+        Downstream ``inputs`` that referenced the removed node are **dropped**
+        (the key is deleted) — the caller is expected to rewire or remove the
+        now-broken downstream nodes. This keeps the graph honest rather than
+        leaving dangling ``[removed_id, slot]`` links that would fail
+        ``validate_node_references``.
+
+        Args:
+            node_id: Node to remove. Must exist.
+
+        Returns:
+            ``self`` for chaining.
+
+        Raises:
+            KeyError: If ``node_id`` is not in the graph.
+        """
+        if node_id not in self.nodes:
+            raise KeyError(f"No node with id {node_id!r}")
+        del self.nodes[node_id]
+        for other in self.nodes.values():
+            for input_name in list(other.inputs.keys()):
+                value = other.inputs[input_name]
+                if self._is_node_reference(value):
+                    if value[0] == node_id:
+                        del other.inputs[input_name]
+                elif isinstance(value, list):
+                    cleaned = [
+                        v for v in value if not (self._is_node_reference(v) and v[0] == node_id)
+                    ]
+                    if len(cleaned) != len(value):
+                        other.inputs[input_name] = cleaned
+        return self
+
+    def topological_order(self) -> list[str]:
+        """
+        Return node ids in dependency order (sources before consumers).
+
+        Edges are derived from ``iter_links()``: an edge ``src -> dst`` means
+        ``dst`` consumes an output of ``src``. ComfyUI itself does not require
+        a specific key order in the prompt dict, but a stable topological
+        order is useful for diffing, deterministic serialization, and
+        reasoning about execution order in CI logs.
+
+        Returns:
+            Node ids ordered so every source appears before its consumers.
+
+        Raises:
+            ValueError: If the graph contains a cycle (ComfyUI would not
+                execute it either).
+        """
+        # Kahn's algorithm with deterministic tie-breaking (insertion order).
+        indegree: dict[str, int] = dict.fromkeys(self.nodes, 0)
+        successors: dict[str, list[str]] = {nid: [] for nid in self.nodes}
+        for src_id, _slot, dst_id, _input in self.iter_links():
+            if src_id in indegree and dst_id in indegree:
+                successors[src_id].append(dst_id)
+                indegree[dst_id] += 1
+
+        # Preserve insertion order for deterministic output.
+        ready = [nid for nid in self.nodes if indegree[nid] == 0]
+        order: list[str] = []
+        while ready:
+            nid = ready.pop(0)
+            order.append(nid)
+            for succ in successors[nid]:
+                indegree[succ] -= 1
+                if indegree[succ] == 0:
+                    ready.append(succ)
+
+        if len(order) != len(self.nodes):
+            remaining = sorted(set(self.nodes) - set(order))
+            raise ValueError(
+                f"Workflow contains a cycle; cannot topologically sort. "
+                f"Nodes in or reachable from a cycle: {remaining}"
+            )
+        return order
+
+    def to_mermaid(self, *, show_class: bool = True) -> str:
+        """
+        Render the graph as a Mermaid ``flowchart`` for README / PR / issue use.
+
+        Each node becomes ``id["class_type"]`` and each socket link becomes an
+        edge. Output slots are labeled on edges (``|slot N|``) only when the
+        source declares more than one used slot; otherwise the edge is plain.
+
+        This is a debugging/diffing aid, not a UI round-trip format. Paste the
+        output into a Markdown block on GitHub and it renders inline.
+
+        Args:
+            show_class: If True (default), label nodes with ``class_type``;
+                if False, label with the node id only (compact view).
+        """
+        lines = ["flowchart TD"]
+        for nid, node in self.nodes.items():
+            label = node.class_type if show_class else nid
+            # Mermaid node ids must be alphanumeric/underscore; sanitize.
+            safe = nid if nid.isalnum() else f'"{nid}"'
+            lines.append(f'    {safe}["{label}"]')
+        for src_id, _slot, dst_id, _input in self.iter_links():
+            src_safe = src_id if src_id.isalnum() else f'"{src_id}"'
+            dst_safe = dst_id if dst_id.isalnum() else f'"{dst_id}"'
+            lines.append(f"    {src_safe} --> {dst_safe}")
+        return "\n".join(lines)
+
+    def diff(self, other: ComfyWorkflow) -> dict[str, Any]:
+        """
+        Compute a structured diff between this workflow and ``other``.
+
+        Compares node identity by ``node_id`` and reports:
+
+        - ``added``: node ids present in ``other`` but not here.
+        - ``removed``: node ids present here but not in ``other``.
+        - ``changed_class``: node ids in both whose ``class_type`` differs.
+        - ``added_inputs`` / ``removed_inputs`` / ``changed_inputs``:
+          per-node input-key changes (added/removed keys, or same key with
+          different value). Values are compared by equality; link lists
+          compare structurally.
+
+        Returns:
+            Dict with the four buckets above (each a list or per-node dict).
+
+        Example:
+            >>> d = wf_a.diff(wf_b)
+            >>> if d["added"] or d["removed"] or d["changed_inputs"]:
+            ...     print("graphs differ")
+        """
+        added = sorted(set(other.nodes) - set(self.nodes))
+        removed = sorted(set(self.nodes) - set(other.nodes))
+        common = set(self.nodes) & set(other.nodes)
+
+        changed_class: list[str] = []
+        added_inputs: dict[str, list[str]] = {}
+        removed_inputs: dict[str, list[str]] = {}
+        changed_inputs: dict[str, list[str]] = {}
+
+        for nid in sorted(common):
+            a, b = self.nodes[nid], other.nodes[nid]
+            if a.class_type != b.class_type:
+                changed_class.append(nid)
+                continue
+            a_keys = set(a.inputs)
+            b_keys = set(b.inputs)
+            if a_keys - b_keys:
+                removed_inputs[nid] = sorted(a_keys - b_keys)
+            if b_keys - a_keys:
+                added_inputs[nid] = sorted(b_keys - a_keys)
+            changed: list[str] = []
+            for k in sorted(a_keys & b_keys):
+                if a.inputs[k] != b.inputs[k]:
+                    changed.append(k)
+            if changed:
+                changed_inputs[nid] = changed
+
+        return {
+            "added": added,
+            "removed": removed,
+            "changed_class": changed_class,
+            "added_inputs": added_inputs,
+            "removed_inputs": removed_inputs,
+            "changed_inputs": changed_inputs,
+        }
+
+    def batch_seeds(
+        self,
+        n: int,
+        *,
+        mode: str = "bump",
+        start: int | None = None,
+        input_keys: Iterable[str] | None = None,
+        class_types: Sequence[str] | None = None,
+    ) -> Iterable[ComfyWorkflow]:
+        """
+        Generate ``n`` mutated copies with distinct seeds (a batch generator).
+
+        This is the seed-batch primitive: yield ``n`` independent
+        ``ComfyWorkflow`` copies whose seed widgets differ, ready to serialize
+        with ``to_api_format()`` and POST to ``/prompt``. Avoids hand-editing
+        JSON for every variant of a Save (API Format) graph.
+
+        Args:
+            n: Number of variants to yield. Must be >= 0.
+            mode: ``"bump"`` (default) increments seeds by the batch index;
+                ``"randomize"`` assigns a fresh random int per copy.
+            start: For ``mode="bump"``, the seed value of the first copy
+                (subsequent copies add their index). If None, the loaded
+                seed is used as the start. Ignored for ``mode="randomize"``.
+            input_keys: Widget names to touch (default ``seed`` / ``noise_seed``).
+            class_types: Optional allow-list of ``class_type`` strings.
+
+        Yields:
+            ``n`` new ``ComfyWorkflow`` instances; the original is unchanged.
+
+        Raises:
+            ValueError: If ``n`` is negative or ``mode`` is unknown.
+        """
+        if n < 0:
+            raise ValueError(f"n must be >= 0, got {n}")
+        if mode not in ("bump", "randomize"):
+            raise ValueError(f"mode must be 'bump' or 'randomize', got {mode!r}")
+
+        base_api = self.to_api_format()
+        for i in range(n):
+            wf = ComfyWorkflow.from_api_dict(base_api, name=f"{self.name}_batch{i}")
+            if mode == "bump":
+                if start is None:
+                    wf.bump_seeds(i, input_keys=input_keys, class_types=class_types)
+                else:
+                    # Deterministic series starting at ``start``: copy i = start + i.
+                    for nid, key in wf.iter_seed_inputs(
+                        input_keys=input_keys, class_types=class_types
+                    ):
+                        wf.nodes[nid].inputs[key] = int(start) + i
+            else:
+                wf.randomize_seeds(input_keys=input_keys, class_types=class_types)
+            yield wf
+
     def __len__(self) -> int:
         """Number of nodes in the graph."""
         return len(self.nodes)
