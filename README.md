@@ -34,8 +34,14 @@ Public core for ComfyUI **API-format graphs**: nodes, loaders, LoRAs, `/object_i
 
 - **Load and mutate**: `from_api_json` / mutators / seed helpers for Save (API Format) exports
 - **Seed batch cookbook**: dry-run write or live `/prompt` loop (`examples/seed_batch_cookbook.py`)
+- **Batch seed generator**: `ComfyWorkflow.batch_seeds(n, mode, start)` yields N distinct copies
 - **Schema validation**: `validate_against_object_info` + `load_object_info` / `fetch_object_info`
+  (with link-vs-scalar type sanity and orphan-node warnings)
+- **Duplicate-seed detection**: `find_duplicate_seeds_across_batch` catches cache-skip collisions before queue
 - **Link checks**: `validate_node_references` (existence only — use object_info for schemas)
+- **Graph introspection**: `iter_links`, `remove_node`, `topological_order` (cycle detection)
+- **Graph diff & viz**: `diff(other)` structured diff; `to_mermaid()` for inline GitHub PR/issue rendering
+- **Stdlib CLI**: `python -m comfy_api_graphs validate|seeds|show` — no GPU, no runtime deps
 - **Optional templates**: FLUX.1 / SDXL T2I / I2I / inpaint / upscale / outpaint / character refs
 - **Honest VRAM hint**: `estimate_vram_usage` returns a planning hint with an explicit disclaimer — not a predictor
 - **Zero runtime dependencies**: Pure Python core (stdlib `urllib` for optional fetch)
@@ -91,6 +97,19 @@ info = fetch_object_info()  # http://127.0.0.1:8188/object_info
 report = validate_against_object_info(wf, info)
 if not report["valid"]:
     raise SystemExit(report["errors"])
+```
+
+### CLI (no GPU, fits in a CI step)
+
+```bash
+# Validate links + optional object_info schema
+python -m comfy_api_graphs validate my_graph_api.json --object-info object_info.json
+
+# Mutate seeds and write N copies
+python -m comfy_api_graphs seeds my_graph_api.json --bump 100 --count 5 --out-dir out/
+
+# Render a Mermaid flowchart (paste into a PR/issue — renders inline on GitHub)
+python -m comfy_api_graphs show my_graph_api.json --mermaid
 ```
 
 ### Optional: template (secondary)
@@ -160,15 +179,27 @@ wf.set_input("4", "seed", 123)
 wf.randomize_seeds()
 api_format = wf.to_api_format()
 wf.save_api_json("workflow_api.seeded.json")
+
+# Graph introspection / mutation
+list(wf.iter_links())              # [(src_id, slot, dst_id, dst_input), ...]
+wf.remove_node("6")                # drop a node + clean dangling links
+wf.topological_order()             # execution order (raises on cycles)
+wf.to_mermaid()                    # Mermaid flowchart for PR/issue diffs
+wf.diff(other_wf)                  # structured added/removed/changed diff
+list(wf.batch_seeds(5, mode="bump", start=100))  # 5 distinct-seed copies
 ```
 
 ### Validation
 
 ```python
-validate_node_references(wf)                 # links exist?
-validate_against_object_info(wf, info)       # class_types + required inputs
-validate_workflow_complete(wf)               # links + SaveImage/loader heuristics
-estimate_vram_usage(wf)                      # planning hint only (see disclaimer)
+validate_node_references(wf)                     # links exist?
+validate_against_object_info(wf, info)           # class_types + required inputs
+                                                 #   + link/scalar type sanity
+                                                 #   + orphan-node warnings
+find_orphan_nodes(wf)                            # dead computations (no consumer)
+find_duplicate_seeds_across_batch([wf_a, wf_b])  # cache-skip collision check
+validate_workflow_complete(wf)                   # links + SaveImage/loader heuristics
+estimate_vram_usage(wf)                          # planning hint only (see disclaimer)
 ```
 
 ### Deprecated: `to_graph_format` / `save_graph_json`
@@ -178,6 +209,8 @@ These emit a **skeleton** with empty `links` — they do **not** round-trip into
 ## Examples
 
 - `seed_batch_cookbook.py` — **start here**: load API JSON → mutate seeds → write or `/prompt`
+- `validate_before_queue.py` — link + object_info schema check before burning GPU
+- `diff_workflows.py` — structured diff + Mermaid between two Save (API Format) graphs
 - `execution_example.py` — queue on local ComfyUI
 - `basic_txt2img.py` — optional FLUX T2I template
 - `img2img_with_lora.py` — optional FLUX I2I + LoRA

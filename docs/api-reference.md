@@ -14,7 +14,7 @@ class ComfyWorkflow:
                  title: Optional[str] = None) -> WorkflowNode
     def get_node(self, node_id: str) -> Optional[WorkflowNode]
     @classmethod
-    def from_api_json(cls, filepath: str, name: Optional[str] = None) -> "ComfyWorkflow"
+    def from_api_json(cls, path_or_dict, name: Optional[str] = None) -> "ComfyWorkflow"
     @classmethod
     def from_api_dict(cls, data: Dict[str, Any], name: str = "workflow") -> "ComfyWorkflow"
     def set_input(self, node_id: str, key: str, value: Any) -> "ComfyWorkflow"
@@ -25,6 +25,13 @@ class ComfyWorkflow:
                            *, all_matches: bool = True) -> int
     def randomize_seeds(self, ...) -> List[str]
     def bump_seeds(self, n: int = 1, ...) -> List[str]
+    def iter_links(self) -> Iterable[Tuple[str, int, str, str]]
+    def remove_node(self, node_id: str) -> "ComfyWorkflow"
+    def topological_order(self) -> List[str]
+    def to_mermaid(self, *, show_class: bool = True) -> str
+    def diff(self, other: "ComfyWorkflow") -> Dict[str, Any]
+    def batch_seeds(self, n: int, *, mode: str = "bump",
+                    start: Optional[int] = None, ...) -> Iterable["ComfyWorkflow"]
     def to_api_format(self) -> Dict[str, Any]
     def to_graph_format(self) -> Dict[str, Any]  # DEPRECATED — empty links
     def save_api_json(self, filepath: str) -> None
@@ -36,6 +43,23 @@ See `examples/seed_batch_cookbook.py`.
 
 `to_graph_format` / `save_graph_json` raise `DeprecationWarning` and do **not**
 produce a frontend-loadable workflow.
+
+#### Graph introspection / mutation (v0.4)
+
+- `iter_links()` — yield `(src_id, src_slot, dst_id, dst_input)` for every
+  socket link. Walks nested conditioning bags; skips the `["0", 0]` placeholder.
+- `remove_node(node_id)` — drop a node and clean up dangling links pointing at
+  it (downstream inputs are removed, not left as broken refs). Raises
+  `KeyError` if missing.
+- `topological_order()` — deterministic dependency order (Kahn's algorithm,
+  insertion-order tie-break). Raises `ValueError` on cycles.
+- `to_mermaid(show_class=True)` — render the graph as a Mermaid `flowchart` for
+  README / PR / issue diffs (renders inline on GitHub).
+- `diff(other)` — structured diff: `added`, `removed`, `changed_class`,
+  `added_inputs`, `removed_inputs`, `changed_inputs` (per node id).
+- `batch_seeds(n, mode="bump", start=None, ...)` — generator yielding `n`
+  mutated copies with distinct seeds (`bump` or `randomize`). The seed-batch
+  primitive for `/prompt` loops; the original workflow is unchanged.
 
 ### `WorkflowNode`
 
@@ -211,12 +235,43 @@ def validate_against_object_info(
     object_info: Dict[str, Any],
     *,
     unknown_inputs_as_errors: bool = False,
+    warn_orphans: bool = True,
 ) -> Dict[str, Any]
 ```
 
-Schema-check `class_type`, required inputs, and output-slot bounds.
+Schema-check `class_type`, required inputs, output-slot bounds, and (as
+warnings) link-vs-scalar type mismatches and orphan nodes whose output is
+never consumed.
 
 **Returns:** `valid`, `errors`, `warnings`, `info`, `node_count`.
+
+### `find_orphan_nodes`
+
+```python
+def find_orphan_nodes(
+    workflow: ComfyWorkflow,
+    *,
+    output_class_types: Optional[Iterable[str]] = None,
+) -> List[str]
+```
+
+Return sorted node ids whose output no other node consumes and which are not
+recognized output nodes (default: SaveImage, PreviewImage, SaveVideo,
+VHS_VideoCombine, SaveAnimatedPNG).
+
+### `find_duplicate_seeds_across_batch`
+
+```python
+def find_duplicate_seeds_across_batch(
+    workflows: Sequence[ComfyWorkflow],
+    *,
+    input_keys: Optional[Iterable[str]] = None,
+) -> Dict[int, List[Tuple[int, str]]]
+```
+
+Detect seed collisions across a batch before queuing. ComfyUI cache-skips
+identical prompts, so a collision silently wastes queue slots. Returns
+`{seed_value: [(workflow_index, node_id), ...]}` for colliding values only.
 
 ### `estimate_vram_usage`
 
@@ -241,6 +296,26 @@ def validate_workflow_complete(workflow: ComfyWorkflow) -> Dict[str, Any]
 
 Link + completeness heuristics only. Prefer `validate_against_object_info`
 before production queues.
+
+## Command-line interface
+
+A minimal, stdlib-only CLI for scripting in CI without a GPU:
+
+```bash
+# Validate links + optional object_info schema
+python -m comfy_api_graphs validate graph_api.json [--object-info snap.json]
+
+# Mutate seeds and write N copies (no queue, no GPU)
+python -m comfy_api_graphs seeds graph_api.json --bump 100 --count 5 --out-dir out/
+python -m comfy_api_graphs seeds graph_api.json --randomize --count 5 --out-dir out/
+
+# Render the graph (topological order or Mermaid for PR/issue diffs)
+python -m comfy_api_graphs show graph_api.json
+python -m comfy_api_graphs show graph_api.json --mermaid
+```
+
+`seeds --fail-on-collision` exits non-zero if any seed value collides across
+the batch (ComfyUI would cache-skip the duplicates).
 
 ---
 

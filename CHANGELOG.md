@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ComfyWorkflow.iter_links()` — yield `(src_id, slot, dst_id, dst_input)` for
+  every socket link (walks nested conditioning bags; skips `["0", 0]`).
+- `ComfyWorkflow.remove_node(node_id)` — drop a node and clean up dangling links
+  pointing at it (downstream inputs are removed, not left as broken refs).
+- `ComfyWorkflow.topological_order()` — deterministic dependency order
+  (Kahn's algorithm); raises `ValueError` on cycles.
+- `ComfyWorkflow.to_mermaid(show_class=True)` — render the graph as a Mermaid
+  `flowchart` for README / PR / issue diffs (renders inline on GitHub).
+- `ComfyWorkflow.diff(other)` — structured diff (added/removed/changed_class/
+  added_inputs/removed_inputs/changed_inputs) between two workflows.
+- `ComfyWorkflow.batch_seeds(n, mode="bump", start=None, ...)` — generator
+  yielding N mutated copies with distinct seeds; the seed-batch primitive.
+- `validate_against_object_info(..., warn_orphans=True)` now warns on
+  link-vs-scalar type mismatches and on orphan nodes whose output no other
+  node consumes.
+- `find_orphan_nodes(workflow, output_class_types=None)` — standalone helper.
+- `find_duplicate_seeds_across_batch(workflows, input_keys=None)` — detect
+  seed collisions across a batch before queuing (ComfyUI cache-skips
+  identical prompts).
+- `python -m comfy_api_graphs` — minimal stdlib CLI: `validate`, `seeds`,
+  `show` subcommands. No GPU / no runtime deps; fits in a CI step.
+
+### Fixed
+
+- `requires-python` bumped to `>=3.9`. The codebase already used PEP 585
+  generic aliases (`set[str]`, `list[tuple[...]]`) which require 3.9+; the
+  previous `>=3.8` claim would have broken on a 3.8 install. Python 3.8 is
+  EOL since Oct 2024.
+- `make lint` now passes on a clean checkout (it previously failed with 67
+  ruff errors, 7 black reformats, 1 mypy `no-untyped-def`). The documented
+  Black/Ruff/MyPy gate is now real.
+- ruff config: moved deprecated top-level `select`/`ignore` to
+  `[tool.ruff.lint]` (required by ruff 0.15+).
+
+### Changed
+
+- README badge: Python 3.8+ → 3.9+. Classifiers drop 3.8.
+- black / ruff / mypy `target-version` / `python_version` → py39.
+
 ## [0.3.0] - 2026-07-11
 
 Close honesty gaps: mutate-first story, object_info schema validation, VRAM
