@@ -39,7 +39,7 @@ from .validation import (
     validate_workflow_complete,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     # Core
