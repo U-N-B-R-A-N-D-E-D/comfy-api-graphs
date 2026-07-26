@@ -1,0 +1,75 @@
+{
+  "CheckpointLoaderSimple": {
+    "input": {
+      "required": {"ckpt_name": [["model.safetensors", "other.safetensors"]]}
+    },
+    "output": ["MODEL", "CLIP", "VAE"],
+    "output_name": ["MODEL", "CLIP", "VAE"]
+  },
+  "CLIPTextEncode": {
+    "input": {
+      "required": {
+        "text": ["STRING", {"multiline": true}],
+        "clip": ["CLIP"]
+      }
+    },
+    "output": ["CONDITIONING"],
+    "output_name": ["CONDITIONING"]
+  },
+  "EmptyLatentImage": {
+    "input": {
+      "required": {
+        "width": ["INT", {"default": 512}],
+        "height": ["INT", {"default": 512}],
+        "batch_size": ["INT", {"default": 1}]
+      }
+    },
+    "output": ["LATENT"],
+    "output_name": ["LATENT"]
+  },
+  "KSampler": {
+    "input": {
+      "required": {
+        "model": ["MODEL"],
+        "seed": ["INT", {"default": 0}],
+        "steps": ["INT", {"default": 20}],
+        "cfg": ["FLOAT", {"default": 8.0}],
+        "sampler_name": [["euler", "euler_ancestral"]],
+        "scheduler": [["normal", "karras"]],
+        "positive": ["CONDITIONING"],
+        "negative": ["CONDITIONING"],
+        "latent_image": ["LATENT"],
+        "denoise": ["FLOAT", {"default": 1.0}]
+      }
+    },
+    "output": ["LATENT"],
+    "output_name": ["LATENT"]
+  },
+  "VAEDecode": {
+    "input": {
+      "required": {
+        "samples": ["LATENT"],
+        "vae": ["VAE"]
+      }
+    },
+    "output": ["IMAGE"],
+    "output_name": ["IMAGE"]
+  },
+  "SaveImage": {
+    "input": {
+      "required": {
+        "images": ["IMAGE"],
+        "filename_prefix": ["STRING", {"default": "ComfyUI"}]
+      }
+    },
+    "output": [],
+    "output_name": []
+  },
+  "VAELoader": {
+    "input": {
+      "required": {"vae_name": [["vae.safetensors"]]}
+    },
+    "output": ["VAE"],
+    "output_name": ["VAE"]
+  }
+}

@@ -115,7 +115,7 @@ was a leak vector; it is intentionally gone.
 
 | Item | Posture |
 |------|---------|
-| Package version | `0.2.0` — load / mutate / seed batch shipped; still source-install |
+| Package version | `0.3.0` — load / mutate / seed batch shipped; still source-install |
 | Install | Local / editable: `pip install -e ".[dev,examples]"` |
 | PyPI | Do not claim until a real publish exists (`make publish` blocked) |
 | SemVer | Applies to *this* repo’s tags; not a promise of private production pins |
