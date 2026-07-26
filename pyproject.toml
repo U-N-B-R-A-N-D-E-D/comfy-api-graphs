@@ -8,7 +8,7 @@ version = "0.3.0"
 description = "Offline Python helper for ComfyUI API-format graphs by [ U N B R A N D E D ]. Load → mutate → object_info validate → re-queue. Not a ComfyUI runtime."
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
     {name = "[ U N B R A N D E D ]"},
 ]
@@ -32,7 +32,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -68,12 +67,14 @@ packages = ["src/comfy_api_graphs"]
 
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+target-version = ['py39', 'py310', 'py311', 'py312']
 include = '\.pyi?$'
 
 [tool.ruff]
 line-length = 100
-target-version = "py38"
+target-version = "py39"
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "F",   # Pyflakes
@@ -88,7 +89,7 @@ select = [
 ignore = ["E501"]  # Line too long (handled by black)
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
