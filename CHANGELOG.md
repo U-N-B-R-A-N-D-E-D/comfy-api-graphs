@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-25
+
+Graph introspection, mutation, diff, Mermaid rendering, batch seed generator,
+and a stdlib-only CLI. Type-sanity, orphan, and duplicate-seed-batch checks.
+Lint/type gate now real on a clean checkout.
+
 ### Added
 
 - `ComfyWorkflow.iter_links()` — yield `(src_id, slot, dst_id, dst_input)` for
