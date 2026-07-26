@@ -24,6 +24,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Optional
 from urllib import error, request
 
 from comfy_api_graphs import ComfyWorkflow, validate_node_references
@@ -45,7 +46,7 @@ def queue_prompt(api_graph: dict, base_url: str) -> str:
     return result["prompt_id"]
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Load API-format JSON, mutate seeds, batch write or queue."
     )
