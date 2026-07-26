@@ -31,6 +31,8 @@ from .templates import (
 from .validation import (
     estimate_vram_usage,
     fetch_object_info,
+    find_duplicate_seeds_across_batch,
+    find_orphan_nodes,
     load_object_info,
     validate_against_object_info,
     validate_node_references,
@@ -50,6 +52,8 @@ __all__ = [
     "validate_against_object_info",
     "estimate_vram_usage",
     "validate_workflow_complete",
+    "find_orphan_nodes",
+    "find_duplicate_seeds_across_batch",
     # FLUX (optional templates — secondary)
     "FluxTxt2ImgTemplate",
     "FluxImg2ImgTemplate",
