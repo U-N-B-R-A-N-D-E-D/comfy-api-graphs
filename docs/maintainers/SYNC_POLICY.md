@@ -83,7 +83,7 @@ edge refs”) and re-implement it cleanly here — without the private knobs.
 ## Versioning (this repo only)
 
 - Semantic versioning applies to **this** package’s tags and CHANGELOG.
-- `0.3.0` = load / mutate / seed batch on the public core; still source-install.
+- `0.4.0` = graph introspection / mutation / diff / Mermaid / batch seeds / stdlib CLI on the public core; still source-install.
 - Real PyPI publishing is a separate decision; until then, install from source:
   `pip install -e ".[dev,examples]"`. `make publish` stays blocked.
 
