@@ -16,25 +16,25 @@ Primary path (what this package is for)::
 Optional FLUX/SDXL templates teach common wiring — they are not the product.
 """
 
-from .core import WorkflowNode, ComfyWorkflow
-from .validation import (
-    validate_node_references,
-    load_object_info,
-    fetch_object_info,
-    validate_against_object_info,
-    estimate_vram_usage,
-    validate_workflow_complete,
-)
+from .core import ComfyWorkflow, WorkflowNode
 from .templates import (
-    FluxTxt2ImgTemplate,
+    CharacterReferenceTemplate,
     FluxImg2ImgTemplate,
     FluxInpaintTemplate,
-    SdxlTxt2ImgTemplate,
-    SdxlImg2ImgTemplate,
-    CharacterReferenceTemplate,
-    UpscaleTemplate,
+    FluxTxt2ImgTemplate,
     InpaintTemplate,
     OutpaintTemplate,
+    SdxlImg2ImgTemplate,
+    SdxlTxt2ImgTemplate,
+    UpscaleTemplate,
+)
+from .validation import (
+    estimate_vram_usage,
+    fetch_object_info,
+    load_object_info,
+    validate_against_object_info,
+    validate_node_references,
+    validate_workflow_complete,
 )
 
 __version__ = "0.3.0"

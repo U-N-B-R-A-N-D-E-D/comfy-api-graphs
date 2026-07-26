@@ -12,7 +12,7 @@ import json
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from .core import ComfyWorkflow
 
@@ -24,7 +24,7 @@ _VRAM_DISCLAIMER = (
 )
 
 
-def validate_node_references(workflow: ComfyWorkflow) -> List[str]:
+def validate_node_references(workflow: ComfyWorkflow) -> list[str]:
     """
     Validate that every ``[node_id, output_index]`` link targets an existing node.
 
@@ -47,7 +47,7 @@ def validate_node_references(workflow: ComfyWorkflow) -> List[str]:
         >>> validate_node_references(wf)
         []
     """
-    errors: List[str] = []
+    errors: list[str] = []
 
     def is_node_reference(value: Any) -> bool:
         if not isinstance(value, list) or len(value) != 2:
@@ -82,8 +82,8 @@ def validate_node_references(workflow: ComfyWorkflow) -> List[str]:
 
 
 def load_object_info(
-    path_or_dict: Union[str, Path, Dict[str, Any]],
-) -> Dict[str, Any]:
+    path_or_dict: str | Path | dict[str, Any],
+) -> dict[str, Any]:
     """
     Load a ComfyUI ``/object_info`` payload from a path or in-memory dict.
 
@@ -107,9 +107,7 @@ def load_object_info(
             data = json.load(f)
 
     if not isinstance(data, dict):
-        raise TypeError(
-            f"object_info must be a dict, got {type(data).__name__}"
-        )
+        raise TypeError(f"object_info must be a dict, got {type(data).__name__}")
     if not data:
         return {}
 
@@ -127,7 +125,7 @@ def fetch_object_info(
     url: str = "http://127.0.0.1:8188/object_info",
     *,
     timeout: float = 60.0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Fetch ``/object_info`` from a running ComfyUI (stdlib ``urllib`` only).
 
@@ -151,7 +149,7 @@ def fetch_object_info(
     return load_object_info(data)
 
 
-def _input_schema_names(node_schema: Dict[str, Any]) -> Dict[str, Any]:
+def _input_schema_names(node_schema: dict[str, Any]) -> dict[str, Any]:
     """
     Flatten required + optional input names from one object_info node entry.
 
@@ -175,10 +173,10 @@ def _input_schema_names(node_schema: Dict[str, Any]) -> Dict[str, Any]:
 
 def validate_against_object_info(
     workflow: ComfyWorkflow,
-    object_info: Dict[str, Any],
+    object_info: dict[str, Any],
     *,
     unknown_inputs_as_errors: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Schema-check an API-format graph against a ComfyUI ``/object_info`` snapshot.
 
@@ -200,9 +198,9 @@ def validate_against_object_info(
         >>> report = validate_against_object_info(wf, info)
         >>> assert report["valid"]
     """
-    errors: List[str] = []
-    warnings: List[str] = []
-    info: List[str] = []
+    errors: list[str] = []
+    warnings: list[str] = []
+    info: list[str] = []
 
     errors.extend(validate_node_references(workflow))
 
@@ -239,10 +237,7 @@ def validate_against_object_info(
         present = set(node.inputs.keys())
 
         for missing in sorted(names["required"] - present):
-            errors.append(
-                f"Node {node_id} ({class_type}): missing required input "
-                f"{missing!r}"
-            )
+            errors.append(f"Node {node_id} ({class_type}): missing required input " f"{missing!r}")
 
         for unknown in sorted(present - names["all"]):
             msg = (
@@ -255,13 +250,13 @@ def validate_against_object_info(
                 warnings.append(msg)
 
         # Output-slot bounds when the source node is known
-        output_len: Optional[int] = None
+        output_len: int | None = None
         outputs = schema.get("output")
         if isinstance(outputs, list):
             output_len = len(outputs)
 
         for input_name, input_value in node.inputs.items():
-            refs: List[Any] = []
+            refs: list[Any] = []
             if is_node_reference(input_value):
                 refs = [input_value]
             elif isinstance(input_value, list):
@@ -304,7 +299,7 @@ def validate_against_object_info(
     }
 
 
-def estimate_vram_usage(workflow: ComfyWorkflow) -> Dict[str, Any]:
+def estimate_vram_usage(workflow: ComfyWorkflow) -> dict[str, Any]:
     """
     Rough VRAM **planning hint** from loader ``class_type`` nodes.
 
@@ -321,9 +316,9 @@ def estimate_vram_usage(workflow: ComfyWorkflow) -> Dict[str, Any]:
     """
     vram_gb = 0.0
     model_count = 0
-    details: List[str] = []
+    details: list[str] = []
 
-    vram_estimates: Dict[str, Any] = {
+    vram_estimates: dict[str, Any] = {
         "CheckpointLoaderSimple": {
             "flux": 22.0,
             "flux-schnell": 22.0,
@@ -363,9 +358,7 @@ def estimate_vram_usage(workflow: ComfyWorkflow) -> Dict[str, Any]:
 
             if "flux" in ckpt_lower:
                 model_vram = (
-                    estimate["flux-schnell"]
-                    if "schnell" in ckpt_lower
-                    else estimate["flux"]
+                    estimate["flux-schnell"] if "schnell" in ckpt_lower else estimate["flux"]
                 )
             else:
                 model_vram = estimate["default"]
@@ -393,18 +386,14 @@ def estimate_vram_usage(workflow: ComfyWorkflow) -> Dict[str, Any]:
         )
     elif total_estimate > 12:
         recommendation = (
-            "Hint only: this class_type mix often needs 16GB-class VRAM — "
-            "not a guarantee."
+            "Hint only: this class_type mix often needs 16GB-class VRAM — " "not a guarantee."
         )
     elif total_estimate > 8:
         recommendation = (
-            "Hint only: this class_type mix often needs 12GB-class VRAM — "
-            "not a guarantee."
+            "Hint only: this class_type mix often needs 12GB-class VRAM — " "not a guarantee."
         )
     else:
-        recommendation = (
-            "Hint only: light class_type mix; still verify on your hardware."
-        )
+        recommendation = "Hint only: light class_type mix; still verify on your hardware."
 
     return {
         "estimated_vram_gb": round(total_estimate, 1),
@@ -418,7 +407,7 @@ def estimate_vram_usage(workflow: ComfyWorkflow) -> Dict[str, Any]:
     }
 
 
-def validate_workflow_complete(workflow: ComfyWorkflow) -> Dict[str, Any]:
+def validate_workflow_complete(workflow: ComfyWorkflow) -> dict[str, Any]:
     """
     Lightweight completeness check before queueing on ``/prompt``.
 
@@ -436,9 +425,9 @@ def validate_workflow_complete(workflow: ComfyWorkflow) -> Dict[str, Any]:
         Dict with ``valid`` (no hard errors), ``errors``, ``warnings``,
         ``info``, and ``node_count``.
     """
-    errors: List[str] = []
-    warnings: List[str] = []
-    info: List[str] = []
+    errors: list[str] = []
+    warnings: list[str] = []
+    info: list[str] = []
 
     errors.extend(validate_node_references(workflow))
 
@@ -448,9 +437,7 @@ def validate_workflow_complete(workflow: ComfyWorkflow) -> Dict[str, Any]:
         "PreviewImage",
         "VHS_VideoCombine",
     }
-    has_output = any(
-        node.class_type in output_nodes for node in workflow.nodes.values()
-    )
+    has_output = any(node.class_type in output_nodes for node in workflow.nodes.values())
     if not has_output:
         warnings.append(
             "No output node found (SaveImage, SaveVideo, PreviewImage, "
@@ -462,9 +449,7 @@ def validate_workflow_complete(workflow: ComfyWorkflow) -> Dict[str, Any]:
         for node in workflow.nodes.values()
     )
     if not has_checkpoint:
-        warnings.append(
-            "No model loader found (CheckpointLoaderSimple or UNETLoader)."
-        )
+        warnings.append("No model loader found (CheckpointLoaderSimple or UNETLoader).")
 
     warnings.append(
         "Link/completeness check only — run validate_against_object_info() "
@@ -475,7 +460,7 @@ def validate_workflow_complete(workflow: ComfyWorkflow) -> Dict[str, Any]:
     info.append(f"Workflow contains {node_count} nodes")
 
     seen_ids: set[str] = set()
-    for node_id in workflow.nodes.keys():
+    for node_id in workflow.nodes:
         if node_id in seen_ids:
             errors.append(f"Duplicate node ID found: {node_id}")
         seen_ids.add(node_id)

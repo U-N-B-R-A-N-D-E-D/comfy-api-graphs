@@ -7,12 +7,14 @@ import random
 from pathlib import Path
 
 import pytest
-from comfy_api_graphs import ComfyWorkflow, WorkflowNode
+
 from comfy_api_graphs import (
-    validate_node_references,
+    ComfyWorkflow,
+    WorkflowNode,
+    estimate_vram_usage,
     load_object_info,
     validate_against_object_info,
-    estimate_vram_usage,
+    validate_node_references,
     validate_workflow_complete,
 )
 
@@ -412,9 +414,7 @@ class TestValidation:
         assert soft["valid"] is True
         assert any("totally_extra" in w for w in soft["warnings"])
 
-        hard = validate_against_object_info(
-            wf, MINIMAL_OBJECT_INFO, unknown_inputs_as_errors=True
-        )
+        hard = validate_against_object_info(wf, MINIMAL_OBJECT_INFO, unknown_inputs_as_errors=True)
         assert hard["valid"] is False
         assert any("totally_extra" in e for e in hard["errors"])
 

@@ -12,10 +12,11 @@ from __future__ import annotations
 import json
 import random
 import warnings
+from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
+from typing import Any
 
 # Inputs commonly used as RNG widgets across stock + popular custom nodes.
 _SEED_INPUT_KEYS = frozenset({"seed", "noise_seed"})
@@ -54,17 +55,17 @@ class WorkflowNode:
 
     node_id: str
     class_type: str
-    inputs: Dict[str, Any] = field(default_factory=dict)
-    title: Optional[str] = None
+    inputs: dict[str, Any] = field(default_factory=dict)
+    title: str | None = None
 
-    def to_api_dict(self) -> Dict[str, Any]:
+    def to_api_dict(self) -> dict[str, Any]:
         """
         Serialize this node for inclusion in an API-format prompt.
 
         Returns:
             Dict with ``class_type`` and ``inputs``; adds ``_meta.title`` when set.
         """
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "class_type": self.class_type,
             "inputs": self.inputs,
         }
@@ -72,7 +73,7 @@ class WorkflowNode:
             result["_meta"] = {"title": self.title}
         return result
 
-    def get_output_ref(self, output_index: int = 0) -> List[Union[str, int]]:
+    def get_output_ref(self, output_index: int = 0) -> list[str | int]:
         """
         Build a socket link to one of this node's outputs.
 
@@ -134,15 +135,15 @@ class ComfyWorkflow:
             name: Local identifier; not part of API JSON.
         """
         self.name = name
-        self.nodes: Dict[str, WorkflowNode] = {}
+        self.nodes: dict[str, WorkflowNode] = {}
         self._next_id = 1
 
     def add_node(
         self,
         class_type: str,
-        inputs: Dict[str, Any],
-        node_id: Optional[str] = None,
-        title: Optional[str] = None,
+        inputs: dict[str, Any],
+        node_id: str | None = None,
+        title: str | None = None,
     ) -> WorkflowNode:
         """
         Append a node to the graph.
@@ -160,17 +161,15 @@ class ComfyWorkflow:
             node_id = str(self._next_id)
             self._next_id += 1
 
-        node = WorkflowNode(
-            node_id=node_id, class_type=class_type, inputs=inputs, title=title
-        )
+        node = WorkflowNode(node_id=node_id, class_type=class_type, inputs=inputs, title=title)
         self.nodes[node_id] = node
         return node
 
-    def get_node(self, node_id: str) -> Optional[WorkflowNode]:
+    def get_node(self, node_id: str) -> WorkflowNode | None:
         """Return the node for ``node_id``, or ``None`` if missing."""
         return self.nodes.get(node_id)
 
-    def to_api_format(self) -> Dict[str, Any]:
+    def to_api_format(self) -> dict[str, Any]:
         """
         Export the graph as ComfyUI **API format** (prompt dict).
 
@@ -180,11 +179,9 @@ class ComfyWorkflow:
         Returns:
             Flat dict keyed by node id strings.
         """
-        return {
-            node_id: node.to_api_dict() for node_id, node in self.nodes.items()
-        }
+        return {node_id: node.to_api_dict() for node_id, node in self.nodes.items()}
 
-    def to_graph_format(self) -> Dict[str, Any]:
+    def to_graph_format(self) -> dict[str, Any]:
         """
         DEPRECATED: minimal UI-oriented **skeleton** — not a UI↔API converter.
 
@@ -208,10 +205,10 @@ class ComfyWorkflow:
             stacklevel=2,
         )
         nodes_array = []
-        links_array: List[Any] = []
+        links_array: list[Any] = []
 
         for node_id, node in self.nodes.items():
-            node_entry: Dict[str, Any] = {
+            node_entry: dict[str, Any] = {
                 "id": int(node_id) if node_id.isdigit() else hash(node_id) & 0xFFFFFF,
                 "type": node.class_type,
                 "pos": [100, 100],
@@ -261,7 +258,7 @@ class ComfyWorkflow:
     # --- Load / mutate (v0.2 queue-time payback) ---------------------------
 
     @staticmethod
-    def _unwrap_api_payload(data: Dict[str, Any]) -> Dict[str, Any]:
+    def _unwrap_api_payload(data: dict[str, Any]) -> dict[str, Any]:
         """
         Accept a raw prompt dict or a ``{"prompt": {...}}`` wrapper.
 
@@ -293,9 +290,9 @@ class ComfyWorkflow:
     @classmethod
     def from_api_dict(
         cls,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         name: str = "workflow",
-    ) -> "ComfyWorkflow":
+    ) -> ComfyWorkflow:
         """
         Build a ``ComfyWorkflow`` from an in-memory API-format prompt dict.
 
@@ -341,9 +338,9 @@ class ComfyWorkflow:
     @classmethod
     def from_api_json(
         cls,
-        path_or_dict: Union[str, Path, Dict[str, Any]],
-        name: Optional[str] = None,
-    ) -> "ComfyWorkflow":
+        path_or_dict: str | Path | dict[str, Any],
+        name: str | None = None,
+    ) -> ComfyWorkflow:
         """
         Load a ComfyUI **API-format** graph from a path or dict.
 
@@ -370,15 +367,15 @@ class ComfyWorkflow:
             data = json.load(f)
         return cls.from_api_dict(data, name=name or path.stem)
 
-    def nodes_by_class_type(self, class_type: str) -> List[WorkflowNode]:
+    def nodes_by_class_type(self, class_type: str) -> list[WorkflowNode]:
         """Return all nodes whose ``class_type`` matches exactly."""
         return [n for n in self.nodes.values() if n.class_type == class_type]
 
-    def nodes_by_title(self, title: str) -> List[WorkflowNode]:
+    def nodes_by_title(self, title: str) -> list[WorkflowNode]:
         """Return all nodes whose ``_meta`` title matches exactly."""
         return [n for n in self.nodes.values() if n.title == title]
 
-    def set_input(self, node_id: str, key: str, value: Any) -> "ComfyWorkflow":
+    def set_input(self, node_id: str, key: str, value: Any) -> ComfyWorkflow:
         """
         Set one input on a node by id.
 
@@ -399,7 +396,7 @@ class ComfyWorkflow:
         node.inputs[key] = value
         return self
 
-    def set_inputs(self, node_id: str, **inputs: Any) -> "ComfyWorkflow":
+    def set_inputs(self, node_id: str, **inputs: Any) -> ComfyWorkflow:
         """Set multiple inputs on one node. Returns ``self`` for chaining."""
         for key, value in inputs.items():
             self.set_input(node_id, key, value)
@@ -458,9 +455,9 @@ class ComfyWorkflow:
     def iter_seed_inputs(
         self,
         *,
-        input_keys: Optional[Iterable[str]] = None,
-        class_types: Optional[Sequence[str]] = None,
-    ) -> List[tuple]:
+        input_keys: Iterable[str] | None = None,
+        class_types: Sequence[str] | None = None,
+    ) -> list[tuple]:
         """
         Find ``(node_id, input_key)`` pairs that look like seed widgets.
 
@@ -468,7 +465,7 @@ class ComfyWorkflow:
         """
         keys = frozenset(input_keys) if input_keys is not None else _SEED_INPUT_KEYS
         allowed = set(class_types) if class_types is not None else None
-        found: List[tuple] = []
+        found: list[tuple] = []
         for node_id, node in self.nodes.items():
             if allowed is not None and node.class_type not in allowed:
                 continue
@@ -480,10 +477,10 @@ class ComfyWorkflow:
     def randomize_seeds(
         self,
         *,
-        input_keys: Optional[Iterable[str]] = None,
-        class_types: Optional[Sequence[str]] = None,
-        rng: Optional[random.Random] = None,
-    ) -> List[str]:
+        input_keys: Iterable[str] | None = None,
+        class_types: Sequence[str] | None = None,
+        rng: random.Random | None = None,
+    ) -> list[str]:
         """
         Assign a fresh random int seed to every matching seed widget.
 
@@ -500,10 +497,8 @@ class ComfyWorkflow:
             List of node ids that were updated.
         """
         roller = rng if rng is not None else random
-        updated: List[str] = []
-        for node_id, key in self.iter_seed_inputs(
-            input_keys=input_keys, class_types=class_types
-        ):
+        updated: list[str] = []
+        for node_id, key in self.iter_seed_inputs(input_keys=input_keys, class_types=class_types):
             # ComfyUI seeds are typically uint64-ish; stay in a safe int range.
             self.nodes[node_id].inputs[key] = roller.randint(0, 2**32 - 1)
             if node_id not in updated:
@@ -514,9 +509,9 @@ class ComfyWorkflow:
         self,
         n: int = 1,
         *,
-        input_keys: Optional[Iterable[str]] = None,
-        class_types: Optional[Sequence[str]] = None,
-    ) -> List[str]:
+        input_keys: Iterable[str] | None = None,
+        class_types: Sequence[str] | None = None,
+    ) -> list[str]:
         """
         Add ``n`` to every matching numeric seed (batch / A-B without full random).
 
@@ -525,10 +520,8 @@ class ComfyWorkflow:
         Returns:
             List of node ids that were updated.
         """
-        updated: List[str] = []
-        for node_id, key in self.iter_seed_inputs(
-            input_keys=input_keys, class_types=class_types
-        ):
+        updated: list[str] = []
+        for node_id, key in self.iter_seed_inputs(input_keys=input_keys, class_types=class_types):
             current = self.nodes[node_id].inputs.get(key)
             if isinstance(current, bool) or not isinstance(current, int):
                 self.nodes[node_id].inputs[key] = int(n)

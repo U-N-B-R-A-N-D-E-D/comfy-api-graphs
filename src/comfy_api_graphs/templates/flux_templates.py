@@ -12,12 +12,12 @@ Comfy slang used here: checkpoint/UNET, CLIP, VAE, KSampler, latent, denoise,
 CFG, LoRA stack, LoadImage, SaveImage, API format.
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 from ..core import ComfyWorkflow, WorkflowNode
 
 
-def _flux_empty_negative(wf: ComfyWorkflow, clip_ref) -> WorkflowNode:
+def _flux_empty_negative(wf: ComfyWorkflow, clip_ref: list[Union[str, int]]) -> WorkflowNode:
     """
     FLUX guidance is distilled — negative conditioning is typically empty.
 
@@ -122,9 +122,7 @@ class FluxTxt2ImgTemplate:
             model_ref = unet.get_output_ref()
             clip_ref = clip.get_output_ref()
 
-        vae_node = wf.add_node(
-            "VAELoader", {"vae_name": vae}, title="Load FLUX VAE"
-        )
+        vae_node = wf.add_node("VAELoader", {"vae_name": vae}, title="Load FLUX VAE")
 
         positive = wf.add_node(
             "CLIPTextEncode",
@@ -279,13 +277,9 @@ class FluxImg2ImgTemplate:
             model_ref = unet.get_output_ref()
             clip_ref = clip.get_output_ref()
 
-        vae_node = wf.add_node(
-            "VAELoader", {"vae_name": vae}, title="Load FLUX VAE"
-        )
+        vae_node = wf.add_node("VAELoader", {"vae_name": vae}, title="Load FLUX VAE")
 
-        load_image = wf.add_node(
-            "LoadImage", {"image": image_path}, title="LoadImage"
-        )
+        load_image = wf.add_node("LoadImage", {"image": image_path}, title="LoadImage")
 
         if width > 0 and height > 0:
             resize = wf.add_node(
@@ -440,16 +434,10 @@ class FluxInpaintTemplate:
             title="Load FLUX UNET",
         )
 
-        vae_node = wf.add_node(
-            "VAELoader", {"vae_name": vae}, title="Load FLUX VAE"
-        )
+        vae_node = wf.add_node("VAELoader", {"vae_name": vae}, title="Load FLUX VAE")
 
-        load_image = wf.add_node(
-            "LoadImage", {"image": image_path}, title="LoadImage"
-        )
-        load_mask = wf.add_node(
-            "LoadImage", {"image": mask_path}, title="Load Mask Image"
-        )
+        load_image = wf.add_node("LoadImage", {"image": image_path}, title="LoadImage")
+        load_mask = wf.add_node("LoadImage", {"image": mask_path}, title="Load Mask Image")
 
         if width > 0 and height > 0:
             resize_img = wf.add_node(

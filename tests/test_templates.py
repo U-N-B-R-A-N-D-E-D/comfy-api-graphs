@@ -3,16 +3,17 @@ Tests for workflow templates (public FLUX / SDXL / utility set).
 """
 
 import pytest
+
 from comfy_api_graphs import (
-    FluxTxt2ImgTemplate,
+    CharacterReferenceTemplate,
     FluxImg2ImgTemplate,
     FluxInpaintTemplate,
-    SdxlTxt2ImgTemplate,
-    SdxlImg2ImgTemplate,
-    CharacterReferenceTemplate,
-    UpscaleTemplate,
+    FluxTxt2ImgTemplate,
     InpaintTemplate,
     OutpaintTemplate,
+    SdxlImg2ImgTemplate,
+    SdxlTxt2ImgTemplate,
+    UpscaleTemplate,
     validate_node_references,
 )
 
@@ -46,9 +47,7 @@ class TestFluxTemplates:
             lora="anime_lora.safetensors",
             lora_strength=0.8,
         )
-        lora_nodes = [
-            n for n in workflow.nodes.values() if n.class_type == "LoraLoader"
-        ]
+        lora_nodes = [n for n in workflow.nodes.values() if n.class_type == "LoraLoader"]
         assert len(lora_nodes) == 1
 
     def test_flux_img2img_basic(self):
@@ -60,9 +59,7 @@ class TestFluxTemplates:
             denoise=0.75,
         )
         assert workflow.name == "flux_img2img"
-        load_nodes = [
-            n for n in workflow.nodes.values() if n.class_type == "LoadImage"
-        ]
+        load_nodes = [n for n in workflow.nodes.values() if n.class_type == "LoadImage"]
         assert len(load_nodes) == 1
         assert validate_node_references(workflow) == []
 
@@ -72,9 +69,7 @@ class TestFluxTemplates:
             image_path="scene.png",
             mask_path="mask.png",
         )
-        assert any(
-            n.class_type == "SetLatentNoiseMask" for n in workflow.nodes.values()
-        )
+        assert any(n.class_type == "SetLatentNoiseMask" for n in workflow.nodes.values())
         assert any(n.class_type == "ImageToMask" for n in workflow.nodes.values())
         assert validate_node_references(workflow) == []
 
@@ -100,9 +95,7 @@ class TestSdxlTemplates:
             refiner_model="sd_xl_refiner_1.0.safetensors",
         )
         checkpoint_nodes = [
-            n
-            for n in workflow.nodes.values()
-            if n.class_type == "CheckpointLoaderSimple"
+            n for n in workflow.nodes.values() if n.class_type == "CheckpointLoaderSimple"
         ]
         assert len(checkpoint_nodes) == 2
         assert validate_node_references(workflow) == []
@@ -151,9 +144,7 @@ class TestUtilityTemplates:
             upscaler="4x-UltraSharp.pth",
         )
         assert workflow.name == "upscale"
-        assert any(
-            n.class_type == "UpscaleModelLoader" for n in workflow.nodes.values()
-        )
+        assert any(n.class_type == "UpscaleModelLoader" for n in workflow.nodes.values())
         assert validate_node_references(workflow) == []
 
     def test_upscale_latent_mode(self):
@@ -162,9 +153,7 @@ class TestUtilityTemplates:
             use_latent_upscale=True,
             scale=2.0,
         )
-        assert any(
-            n.class_type == "LatentUpscaleBy" for n in workflow.nodes.values()
-        )
+        assert any(n.class_type == "LatentUpscaleBy" for n in workflow.nodes.values())
         assert validate_node_references(workflow) == []
 
     def test_inpaint_template(self):
@@ -182,12 +171,8 @@ class TestUtilityTemplates:
             expand_left=128,
             expand_right=128,
         )
-        assert any(
-            n.class_type == "ImagePadForOutpaint" for n in workflow.nodes.values()
-        )
-        assert any(
-            n.class_type == "SetLatentNoiseMask" for n in workflow.nodes.values()
-        )
+        assert any(n.class_type == "ImagePadForOutpaint" for n in workflow.nodes.values())
+        assert any(n.class_type == "SetLatentNoiseMask" for n in workflow.nodes.values())
         assert validate_node_references(workflow) == []
 
     def test_outpaint_requires_expansion(self):
@@ -239,12 +224,8 @@ class TestTemplateApiFormat:
             FluxImg2ImgTemplate.create(prompt="test", image_path="a.png"),
             SdxlImg2ImgTemplate.create(prompt="test", image_path="a.png"),
             UpscaleTemplate.create(image_path="a.png"),
-            InpaintTemplate.create(
-                prompt="test", image_path="a.png", mask_path="m.png"
-            ),
-            OutpaintTemplate.create(
-                prompt="test", image_path="a.png", expand_right=64
-            ),
+            InpaintTemplate.create(prompt="test", image_path="a.png", mask_path="m.png"),
+            OutpaintTemplate.create(prompt="test", image_path="a.png", expand_right=64),
         ]
         for workflow in cases:
             errors = validate_node_references(workflow)

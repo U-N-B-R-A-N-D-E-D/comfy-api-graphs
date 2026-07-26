@@ -80,9 +80,7 @@ class SdxlTxt2ImgTemplate:
         )
 
         if vae:
-            vae_node = wf.add_node(
-                "VAELoader", {"vae_name": vae}, title="Load VAE"
-            )
+            vae_node = wf.add_node("VAELoader", {"vae_name": vae}, title="Load VAE")
             vae_ref = vae_node.get_output_ref()
         else:
             vae_ref = base.get_output_ref(2)
@@ -277,9 +275,7 @@ class SdxlImg2ImgTemplate:
         )
 
         if vae:
-            vae_node = wf.add_node(
-                "VAELoader", {"vae_name": vae}, title="Load VAE"
-            )
+            vae_node = wf.add_node("VAELoader", {"vae_name": vae}, title="Load VAE")
             vae_ref = vae_node.get_output_ref()
         else:
             vae_ref = checkpoint.get_output_ref(2)
@@ -302,9 +298,7 @@ class SdxlImg2ImgTemplate:
             model_ref = checkpoint.get_output_ref()
             clip_ref = checkpoint.get_output_ref(1)
 
-        load_image = wf.add_node(
-            "LoadImage", {"image": image_path}, title="LoadImage"
-        )
+        load_image = wf.add_node("LoadImage", {"image": image_path}, title="LoadImage")
 
         if width > 0 and height > 0:
             resize = wf.add_node(
