@@ -6,8 +6,8 @@ without a GPU. Three subcommands:
 
 - ``validate <file> [--object-info <snap.json>]`` — link check, optional
   object_info schema check, orphan + duplicate-seed warnings.
-- ``seeds <file> --randomize|--bump N -o <out.json>`` — mutate seeds and
-  write a new API-format file (no queue, no GPU).
+- ``seeds <file> --randomize|--bump N --count N --out-dir <dir>`` — mutate seeds and
+  write N new API-format files (no queue, no GPU).
 - ``show <file> --mermaid`` — print a Mermaid flowchart of the graph (paste
   into a PR/issue for inline rendering on GitHub).
 
