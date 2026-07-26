@@ -11,10 +11,11 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
-from .core import ComfyWorkflow
+from .core import _SEED_INPUT_KEYS, ComfyWorkflow
 
 # Planning-hint disclaimer — returned with every estimate_vram_usage result.
 _VRAM_DISCLAIMER = (
@@ -176,19 +177,24 @@ def validate_against_object_info(
     object_info: dict[str, Any],
     *,
     unknown_inputs_as_errors: bool = False,
+    warn_orphans: bool = True,
 ) -> dict[str, Any]:
     """
     Schema-check an API-format graph against a ComfyUI ``/object_info`` snapshot.
 
     Catches the failure class that link-only validation misses: missing /
     renamed ``class_type``, unknown widget names, missing required inputs,
-    and output-slot indexes past what the source node declares.
+    output-slot indexes past what the source node declares, and (as warnings)
+    link-vs-scalar type mismatches and orphan nodes whose output is never
+    consumed.
 
     Args:
         workflow: Graph to validate.
         object_info: Payload from ``load_object_info`` / ``fetch_object_info``.
         unknown_inputs_as_errors: If True, unknown input keys are errors;
             default False keeps them as warnings (dynamic custom nodes exist).
+        warn_orphans: If True (default), warn about non-output nodes whose
+            outputs no other node consumes.
 
     Returns:
         Dict with ``valid``, ``errors``, ``warnings``, ``info``, ``node_count``.
@@ -262,6 +268,23 @@ def validate_against_object_info(
             elif isinstance(input_value, list):
                 refs = [item for item in input_value if is_node_reference(item)]
 
+            # Link-vs-scalar type sanity (warning, not error — custom nodes vary).
+            declared = _declared_input_type(names, schema, input_name)
+            if declared is not None:
+                value_is_link = bool(refs)
+                if declared == "link" and not value_is_link:
+                    warnings.append(
+                        f"Node {node_id} ({class_type}) input {input_name!r}: "
+                        "schema declares a link type but value is a scalar "
+                        "(expected [node_id, output_index])"
+                    )
+                elif declared == "scalar" and value_is_link:
+                    warnings.append(
+                        f"Node {node_id} ({class_type}) input {input_name!r}: "
+                        "schema declares a widget/scalar type but value is a "
+                        "node link (expected a scalar)"
+                    )
+
             for ref_id, ref_idx in refs:
                 if ref_id == "0" and ref_idx == 0:
                     continue
@@ -290,12 +313,139 @@ def validate_against_object_info(
                 f"{output_len} outputs)"
             )
 
+    if warn_orphans:
+        for orphan in find_orphan_nodes(workflow):
+            warnings.append(
+                f"Node {orphan}: no other node consumes its output and it is "
+                "not a recognized output node (SaveImage/PreviewImage/SaveVideo/"
+                "VHS_VideoCombine) — its result is likely discarded"
+            )
+
     return {
         "valid": len(errors) == 0,
         "errors": errors,
         "warnings": warnings,
         "info": info,
         "node_count": len(workflow.nodes),
+    }
+
+
+# Primitive widget types in ComfyUI object_info (everything else is a link type).
+_PRIMITIVE_WIDGET_TYPES = frozenset({"STRING", "INT", "FLOAT", "BOOLEAN"})
+
+# class_types that persist results — anything else with no consumers is an orphan.
+_OUTPUT_CLASS_TYPES = frozenset(
+    {"SaveImage", "PreviewImage", "SaveVideo", "VHS_VideoCombine", "SaveAnimatedPNG"}
+)
+
+
+def _declared_input_type(
+    names: dict[str, set[str]],
+    schema: dict[str, Any],
+    input_name: str,
+) -> str | None:
+    """
+    Classify a schema-declared input as ``"link"``, ``"scalar"``, or ``None``.
+
+    Heuristic on the object_info type spec (a list):
+
+    - First element is a list  -> combo widget (scalar).   e.g. ``[["euler","..."]]``
+    - First element is a primitive name (STRING/INT/FLOAT/BOOLEAN) -> scalar.
+    - First element is any other string -> a link type (MODEL/CLIP/VAE/...).
+
+    Returns ``None`` when the input is not in the schema or the spec is malformed;
+    callers should treat ``None`` as "no opinion" (do not warn).
+    """
+    if input_name not in names["all"]:
+        return None
+    input_block = schema.get("input") or {}
+    if not isinstance(input_block, dict):
+        return None
+    for bucket in ("required", "optional"):
+        spec = (input_block.get(bucket) or {}).get(input_name)
+        if isinstance(spec, list) and spec:
+            first = spec[0]
+            if isinstance(first, list):
+                return "scalar"
+            if isinstance(first, str):
+                return "link" if first not in _PRIMITIVE_WIDGET_TYPES else "scalar"
+            return None
+    return None
+
+
+def find_orphan_nodes(
+    workflow: ComfyWorkflow,
+    *,
+    output_class_types: Iterable[str] | None = None,
+) -> list[str]:
+    """
+    Return node ids whose output no other node consumes and which are not outputs.
+
+    A node is "orphan" when:
+
+    - no other node references any of its outputs via a ``[node_id, slot]`` link, AND
+    - its ``class_type`` is not in ``output_class_types`` (default: SaveImage,
+      PreviewImage, SaveVideo, VHS_VideoCombine, SaveAnimatedPNG).
+
+    These are dead computations whose result is discarded — common when a user
+    deletes a downstream SaveImage but leaves the sampler/decoder in the graph.
+
+    Args:
+        workflow: Graph to inspect.
+        output_class_types: Optional override for the set of terminal class types.
+
+    Returns:
+        Sorted list of orphan node ids.
+    """
+    outputs = (
+        set(output_class_types) if output_class_types is not None else set(_OUTPUT_CLASS_TYPES)
+    )
+    consumed: set[str] = set()
+    for src_id, _slot, _dst_id, _input in workflow.iter_links():
+        consumed.add(src_id)
+    orphans = [
+        nid
+        for nid, node in workflow.nodes.items()
+        if nid not in consumed and node.class_type not in outputs
+    ]
+    return sorted(orphans)
+
+
+def find_duplicate_seeds_across_batch(
+    workflows: Sequence[ComfyWorkflow],
+    *,
+    input_keys: Iterable[str] | None = None,
+) -> dict[int, list[tuple[int, str]]]:
+    """
+    Detect seed collisions across a batch of workflows before queuing.
+
+    For each distinct seed value that appears in more than one workflow, return
+    ``{seed_value: [(workflow_index, node_id), ...]}``. ComfyUI cache-skips
+    identical prompts, so a collision across a "batch" silently wastes queue
+    slots — this helper catches that in CI before the GPU sees it.
+
+    Args:
+        workflows: Sequence of ``ComfyWorkflow`` instances (e.g. from ``batch_seeds``).
+        input_keys: Widget names to consider (default ``seed`` / ``noise_seed``).
+
+    Returns:
+        Dict mapping each colliding seed value to the list of
+        ``(workflow_index, node_id)`` slots where it appears. Empty dict = no
+        collisions.
+    """
+    keys = frozenset(input_keys) if input_keys is not None else _SEED_INPUT_KEYS
+    by_value: dict[int, list[tuple[int, str]]] = {}
+    for wf_idx, wf in enumerate(workflows):
+        for node_id, node in wf.nodes.items():
+            for key in keys:
+                value = node.inputs.get(key)
+                if isinstance(value, bool) or not isinstance(value, int):
+                    continue
+                by_value.setdefault(value, []).append((wf_idx, node_id))
+    return {
+        value: slots
+        for value, slots in by_value.items()
+        if len({wf_idx for wf_idx, _ in slots}) > 1
     }
 
 
@@ -481,4 +631,6 @@ __all__ = [
     "validate_against_object_info",
     "estimate_vram_usage",
     "validate_workflow_complete",
+    "find_orphan_nodes",
+    "find_duplicate_seeds_across_batch",
 ]
