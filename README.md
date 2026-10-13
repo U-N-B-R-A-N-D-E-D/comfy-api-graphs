@@ -1,3 +1,5 @@
+Offline Python helper to load, mutate and validate ComfyUI API-format graphs, with no runtime dependencies.
+
 # Comfy API Graphs
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -25,6 +27,92 @@ assert report["valid"], report["errors"]
 # 4. Re-export or POST {"prompt": wf.to_api_format()} to /prompt
 wf.save_api_json("my_graph_api.seeded.json")
 ```
+
+## Why this exists
+
+ComfyUI's node editor is the right place to *design* a graph, but the exported **API-format** JSON is what automation actually touches: batch runs, seed sweeps, prompt swaps, CI checks. Editing that JSON by hand is error-prone, and a bad link or a missing required input only shows up after you have queued a job and burned GPU time.
+
+This package is the small, boring layer in between: load the export, change specific inputs, check the graph **offline** (links, and optionally the schema from a cached `/object_info`), then write it back or POST it. It is intentionally not a runtime, not a UI-to-API converter and has zero runtime dependencies. See [docs/maintainers/SYNC_POLICY.md](docs/maintainers/SYNC_POLICY.md) for the scope boundary.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  UI["ComfyUI editor<br/>Save (API Format)"] --> J["graph_api.json"]
+  J --> W["ComfyWorkflow<br/>core.py"]
+  W -- "set_input / randomize_seeds /<br/>batch_seeds / remove_node" --> W
+  OI["object_info.json<br/>(cached or fetched)"] --> V["validation.py"]
+  W --> V
+  V -- "report: valid / errors / warnings" --> W
+  W --> OUT["save_api_json() or<br/>POST /prompt"]
+  W --> VIZ["to_mermaid() / diff()"]
+  T["templates/<br/>FLUX, SDXL (optional)"] --> W
+  CLI["python -m comfy_api_graphs<br/>validate | seeds | show"] --> W
+```
+
+| Path | Role |
+|------|------|
+| `src/comfy_api_graphs/core.py` | `ComfyWorkflow`: load, mutate, introspect, diff, Mermaid, seed batches |
+| `src/comfy_api_graphs/validation.py` | Link checks, `/object_info` schema checks, orphan and duplicate-seed detection, VRAM hint |
+| `src/comfy_api_graphs/templates/` | Optional generic FLUX/SDXL/utility wiring templates |
+| `src/comfy_api_graphs/__main__.py` | Stdlib CLI |
+| `examples/`, `tests/` | Runnable examples; 142 tests plus fixtures |
+
+## Show, don't tell
+
+Real output from the CLI on `tests/fixtures/minimal_api_graph.json` (a 6-node text-to-image graph):
+
+| Command | What you get |
+|---------|--------------|
+| `python -m comfy_api_graphs show graph.json --mermaid` | A Mermaid flowchart that renders inline on GitHub (below) |
+| `python -m comfy_api_graphs validate graph.json --object-info object_info.json` | `Link check: OK` and `valid: True`, exit code 0; non-zero on errors |
+| `python -m comfy_api_graphs seeds graph.json --bump 100 --count 3 --out-dir out/` | Three files `*_seed_000..002.json` with seeds 100, 101, 102 |
+
+```mermaid
+flowchart TD
+    1["CheckpointLoaderSimple"]
+    2["CLIPTextEncode"]
+    3["EmptyLatentImage"]
+    4["KSampler"]
+    5["VAEDecode"]
+    6["SaveImage"]
+    1 --> 2
+    1 --> 4
+    2 --> 4
+    2 --> 4
+    3 --> 4
+    4 --> 5
+    1 --> 5
+    5 --> 6
+```
+
+No screenshots or GIFs are shipped: the library has no UI.
+
+## Verified quickstart
+
+Checked on 2026-10-12 with Python 3 in a fresh virtualenv:
+
+```bash
+git clone https://github.com/U-N-B-R-A-N-D-E-D/comfy-api-graphs.git
+cd comfy-api-graphs
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+pytest                      # 142 passed
+ruff check src tests && black --check src tests && mypy src   # all clean
+python -m comfy_api_graphs validate tests/fixtures/minimal_api_graph.json \
+  --object-info tests/fixtures/minimal_object_info.json         # valid: True
+```
+
+Results: 142 tests pass (coverage about 94%), lint, format and type checks are clean, and the three CLI commands above run as described. Not verified in this pass: queueing against a live ComfyUI server (`POST /prompt`, `fetch_object_info`), since no server was available.
+
+## Limitations
+
+- Alpha (0.4.x): the public API may change between minor versions; see [CHANGELOG.md](CHANGELOG.md).
+- API-format only. It does not convert editor-format ("UI") graphs, and `to_graph_format` is a deprecated skeleton that will not round-trip into the editor.
+- Validation is only as good as the `/object_info` snapshot you give it; link checks alone do not prove a graph will run.
+- `estimate_vram_usage` is a planning hint, not a predictor.
+- FLUX/SDXL templates are generic teaching wiring, and the LTX/Wan video templates are stubs that raise `NotImplementedError`.
+- Not published on PyPI; install from GitHub or a clone.
 
 ## Scope
 
@@ -235,7 +323,11 @@ Prefer real ComfyUI `class_type` names from `/object_info`. Do not invent specul
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md). Run `make lint` and `make test` before opening a PR; use `docs/`, `feat/` or `fix/` branches.
+
+## Citation
+
+Cite via [CITATION.cff](CITATION.cff) (GitHub's "Cite this repository" button). Release history: [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
