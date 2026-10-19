@@ -336,3 +336,7 @@ MIT License — Copyright (c) 2026 [ U N B R A N D E D ]. See [LICENSE](LICENSE)
 ## Acknowledgments
 
 Thanks to the ComfyUI team and the wider custom-node community. FLUX.1 is by Black Forest Labs; SDXL is by Stability AI — templates here only teach common ComfyUI wiring patterns around those models.
+
+## Related (public)
+
+- [`comfyui-helm`](https://github.com/U-N-B-R-A-N-D-E-D/comfyui-helm) — training-free activation steering for ComfyUI (open weights only).
